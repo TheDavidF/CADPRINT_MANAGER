@@ -128,7 +128,7 @@ class QuotationApiIntegrationTest {
     @Test
     void recordsProductionConsumptionOnceAndRejectsInsufficientStock() throws Exception {
         var material = json.createObjectNode().put("sku", "PROD-USAGE-PLA").put("name", "PLA prueba")
-                .put("category", "Filamento").put("unit", "g");
+                .put("category", "Filamento").put("unit", "g").put("unitCost", "0.8000");
         long materialId = body(send(post("/api/materials"), OPERATOR, material)
                 .andExpect(status().isCreated())).path("id").asLong();
         var entry = json.createObjectNode().put("materialId", materialId).put("type", "ENTRADA")
@@ -161,6 +161,25 @@ class QuotationApiIntegrationTest {
                 materialId)).isEqualByComparingTo("7.500");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM movements WHERE material_id = ? AND type = 'SALIDA'",
                 Integer.class, materialId)).isEqualTo(1);
+        String profitability = orderPath + "/profitability";
+        send(get(profitability), OPERATOR, null).andExpect(status().isForbidden());
+        jdbc.update("UPDATE materials SET unit_cost = 3.00 WHERE id = ?", materialId);
+        send(post(consumptionPath), OPERATOR, consumption).andExpect(status().isOk())
+                .andExpect(jsonPath("$.unitCostAtConsumption").doesNotExist());
+        send(get(profitability), ADMIN, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.recordedMaterialCost").value(2))
+                .andExpect(jsonPath("$.consumptionCount").value(1))
+                .andExpect(jsonPath("$.unvaluedConsumptions").value(0));
+
+        jdbc.update("UPDATE production_consumptions SET unit_cost_at_consumption = NULL WHERE id = ?",
+                results.getFirst().path("id").asLong());
+        jdbc.update("UPDATE materials SET unit_cost = 0.00 WHERE id = ?", materialId);
+        var unvalued = consumption.deepCopy().put("requestId", java.util.UUID.randomUUID().toString());
+        send(post(consumptionPath), OPERATOR, unvalued).andExpect(status().isOk());
+        send(get(profitability), ADMIN, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.recordedMaterialCost").value(0))
+                .andExpect(jsonPath("$.consumptionCount").value(2))
+                .andExpect(jsonPath("$.unvaluedConsumptions").value(2));
     }
 
     @Test

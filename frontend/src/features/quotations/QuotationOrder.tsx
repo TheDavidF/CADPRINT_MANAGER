@@ -26,6 +26,7 @@ export function QuotationOrder({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [reload, setReload] = useState(0);
+  const [profitRevision, setProfitRevision] = useState(0);
 
   useEffect(() => {
     const active = new AbortController();
@@ -154,14 +155,21 @@ export function QuotationOrder({
           </div>
           <OrderPayments token={token} current={current} />
           {showProfitability && (
-            <OrderProfitability token={token} current={current} />
+            <OrderProfitability
+              key={profitRevision}
+              token={token}
+              current={current}
+            />
           )}
           {order.productionStartedAt && (
             <ProductionConsumptions
               token={token}
               current={current}
               materials={materials}
-              refreshInventory={refreshInventory}
+              refreshInventory={() => {
+                setProfitRevision((previous) => previous + 1);
+                return refreshInventory();
+              }}
             />
           )}
         </>
