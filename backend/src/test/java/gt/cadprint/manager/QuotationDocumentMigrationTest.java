@@ -43,7 +43,7 @@ class QuotationDocumentMigrationTest {
                 "--cadprint.quotation-documents.directory=" + directory.resolve("pdfs"),
                 "--CADPRINT_ADMIN_PASSWORD=test-admin-password", "--CADPRINT_OPERATOR_PASSWORD=test-operator-password")) {
             assertThat(context.getEnvironment().getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
-            assertThat(context.getBean(Flyway.class).info().current().getVersion().getVersion()).isEqualTo("15");
+            assertThat(context.getBean(Flyway.class).info().current().getVersion().getVersion()).isEqualTo("16");
             var jdbc = context.getBean(JdbcTemplate.class);
             var migrated = jdbc.queryForList("SELECT * FROM quotation_revisions");
             assertThat(migrated).allSatisfy(row -> {

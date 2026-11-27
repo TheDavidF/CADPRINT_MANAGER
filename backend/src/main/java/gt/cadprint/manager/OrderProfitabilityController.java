@@ -16,12 +16,14 @@ class OrderProfitabilityController {
     private final CustomerOrderRepository orders;
     private final QuotationRevisionRepo revisions;
     private final QuotationLineRepo lines;
+    private final ProductionConsumptionRepository consumptions;
 
     OrderProfitabilityController(CustomerOrderRepository orders, QuotationRevisionRepo revisions,
-                                 QuotationLineRepo lines) {
+                                 QuotationLineRepo lines, ProductionConsumptionRepository consumptions) {
         this.orders = orders;
         this.revisions = revisions;
         this.lines = lines;
+        this.consumptions = consumptions;
     }
 
     @GetMapping("/api/quotations/{quotationId}/revisions/{revisionNumber}/order/profitability")
@@ -50,9 +52,22 @@ class OrderProfitabilityController {
         BigDecimal marginPercent = estimatedProfit != null && sales.signum() > 0
                 ? estimatedProfit.movePointRight(2).divide(sales, 2, RoundingMode.HALF_UP)
                 : null;
-        return new Estimate(sales, coveredCost, quotedLines.size(), missingLines, estimatedProfit, marginPercent);
+        var recordedConsumptions = consumptions.findAllByCustomerOrderIdOrderByIdAsc(order.id);
+        BigDecimal recordedMaterialCost = BigDecimal.ZERO;
+        int unvaluedConsumptions = 0;
+        for (var consumption : recordedConsumptions) {
+            if (consumption.unitCostAtConsumption == null) {
+                unvaluedConsumptions++;
+            } else {
+                recordedMaterialCost = recordedMaterialCost.add(
+                        consumption.unitCostAtConsumption.multiply(consumption.movement.quantity));
+            }
+        }
+        return new Estimate(sales, coveredCost, quotedLines.size(), missingLines, estimatedProfit, marginPercent,
+                recordedMaterialCost.setScale(2, RoundingMode.HALF_UP), recordedConsumptions.size(), unvaluedConsumptions);
     }
 
     record Estimate(BigDecimal salesExcludingShipping, BigDecimal coveredEstimatedCost,
-                    int lineCount, int missingCostLines, BigDecimal estimatedProfit, BigDecimal marginPercent) {}
+                    int lineCount, int missingCostLines, BigDecimal estimatedProfit, BigDecimal marginPercent,
+                    BigDecimal recordedMaterialCost, int consumptionCount, int unvaluedConsumptions) {}
 }

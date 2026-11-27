@@ -10,6 +10,9 @@ type Estimate = {
   missingCostLines: number;
   estimatedProfit: string | null;
   marginPercent: string | null;
+  recordedMaterialCost: string;
+  consumptionCount: number;
+  unvaluedConsumptions: number;
 };
 
 const decimals = [
@@ -17,6 +20,7 @@ const decimals = [
   'coveredEstimatedCost',
   'estimatedProfit',
   'marginPercent',
+  'recordedMaterialCost',
 ];
 
 export function OrderProfitability({
@@ -106,6 +110,31 @@ export function OrderProfitability({
               Calculado con los costos de producción vinculados a la revisión
               aceptada.
             </p>
+          )}
+          <h4>Materiales consumidos</h4>
+          {estimate.consumptionCount === 0 ? (
+            <p>Sin consumos registrados.</p>
+          ) : (
+            <>
+              <SummaryGrid
+                items={[
+                  {
+                    label: 'Costo de materiales con valor registrado',
+                    value: gtq(estimate.recordedMaterialCost),
+                  },
+                ]}
+              />
+              {estimate.unvaluedConsumptions > 0 && (
+                <p>
+                  Consumos sin costo registrado: {estimate.unvaluedConsumptions}{' '}
+                  de {estimate.consumptionCount}.
+                </p>
+              )}
+              <p>
+                Valorado al costo unitario de inventario al registrar cada
+                salida. Incluye únicamente materiales.
+              </p>
+            </>
           )}
         </>
       )}

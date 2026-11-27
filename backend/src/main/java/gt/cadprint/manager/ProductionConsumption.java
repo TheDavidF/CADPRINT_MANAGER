@@ -1,5 +1,7 @@
 package gt.cadprint.manager;
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -26,11 +28,16 @@ class ProductionConsumption {
     @Column(nullable = false, length = 36)
     String requestId;
 
+    @Column(precision = 16, scale = 4, updatable = false)
+    BigDecimal unitCostAtConsumption;
+
     protected ProductionConsumption() {}
 
     ProductionConsumption(Long customerOrderId, Movement movement, String requestId) {
         this.customerOrderId = customerOrderId;
         this.movement = movement;
         this.requestId = requestId;
+        var unitCost = movement.material.unitCost;
+        this.unitCostAtConsumption = unitCost != null && unitCost.signum() > 0 ? unitCost : null;
     }
 }
