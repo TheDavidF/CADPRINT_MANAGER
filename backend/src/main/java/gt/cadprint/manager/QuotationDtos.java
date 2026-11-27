@@ -36,7 +36,13 @@ final class QuotationDtos {
                       @Size(max = 4000) String notes, LocalDate validUntil,
                       @Valid Discount generalDiscount,
                       @PositiveOrZero @Digits(integer = 25, fraction = 2) BigDecimal shippingAmount,
-                      @NotNull @Size(max = 200) List<@NotNull @Valid LineInput> lines) {}
+                      @NotNull @Size(max = 200) List<@NotNull @Valid LineInput> lines,
+                      @Positive Long customerId) {
+        DraftInput(Recipient recipient, String commercialTerms, String notes, LocalDate validUntil,
+                   Discount generalDiscount, BigDecimal shippingAmount, List<LineInput> lines) {
+            this(recipient, commercialTerms, notes, validUntil, generalDiscount, shippingAmount, lines, null);
+        }
+    }
 
     record EditInput(@NotNull @PositiveOrZero Long version, @NotNull @Valid DraftInput draft) {}
 
@@ -65,7 +71,7 @@ final class QuotationDtos {
 
     record Detail(Summary revision, Integer sourceRevisionNumber, Integer replacementRevisionNumber,
                   String currency, Recipient recipient, Issuer issuer, String commercialTerms, String notes,
-                  String calculationPolicyVersion, Totals totals, List<InternalLine> lines) {}
+                  String calculationPolicyVersion, Totals totals, List<InternalLine> lines, Long customerId) {}
 
     record EventView(int revisionNumber, QuotationEventType type, QuotationStatus previousStatus,
                      QuotationStatus newStatus, String actor, Instant occurredAt, String reason, String details) {}

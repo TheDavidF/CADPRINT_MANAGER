@@ -34,10 +34,11 @@ class QuotationService {
     private final QuotationLineFactory lineFactory;
     private final Issuer issuer;
     private final QuotationDocumentQueue documents;
+    private final CustomerRepository customers;
 
     QuotationService(QuotationRepo quotations, QuotationRevisionRepo revisions, QuotationLineRepo lines,
                      QuotationEventRepo events, QuotationMoney money, QuotationLineFactory lineFactory,
-                     QuotationDocumentQueue documents,
+                     QuotationDocumentQueue documents, CustomerRepository customers,
                      @Value("${cadprint.quotations.issuer-name:CADPRINT}") String issuerName,
                      @Value("${cadprint.quotations.issuer-email:}") String issuerEmail,
                      @Value("${cadprint.quotations.issuer-phone:}") String issuerPhone,
@@ -49,6 +50,7 @@ class QuotationService {
         this.money = money;
         this.lineFactory = lineFactory;
         this.documents = documents;
+        this.customers = customers;
         this.issuer = new Issuer(clean(issuerName), clean(issuerEmail), clean(issuerPhone), clean(issuerAddress));
     }
 
@@ -240,6 +242,14 @@ class QuotationService {
 
     private List<QuotationLine> applyDraft(QuotationRevision revision, DraftInput input) {
         Recipient recipient = input.recipient();
+        revision.customerId = input.customerId();
+        if (revision.customerId != null) {
+            var customer = customers.findById(revision.customerId)
+                    .orElseThrow(() -> invalid("El cliente seleccionado no existe"));
+            if (recipient == null) {
+                recipient = new Recipient(customer.name, customer.contact, customer.email, customer.phone, customer.address);
+            }
+        }
         revision.recipientName = recipient == null ? null : clean(recipient.name());
         revision.recipientContact = recipient == null ? null : clean(recipient.contact());
         revision.recipientEmail = recipient == null ? null : clean(recipient.email());
@@ -265,6 +275,7 @@ class QuotationService {
     }
 
     private void copyHeader(QuotationRevision source, QuotationRevision draft) {
+        draft.customerId = source.customerId;
         draft.recipientName = source.recipientName;
         draft.recipientContact = source.recipientContact;
         draft.recipientEmail = source.recipientEmail;
@@ -313,7 +324,7 @@ class QuotationService {
         return new Detail(summary(quote, revision), revisionNumber(revision.sourceRevision),
                 revisionNumber(revision.replacedByRevision), revision.currency, recipient(revision), issuer(revision),
                 revision.commercialTerms, revision.notes, revision.calculationPolicyVersion, totals(revision),
-                storedLines(revision).stream().map(this::internalLine).toList());
+                storedLines(revision).stream().map(this::internalLine).toList(), revision.customerId);
     }
 
     private InternalLine internalLine(QuotationLine line) {

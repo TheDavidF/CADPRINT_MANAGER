@@ -10,7 +10,15 @@ import { gtq, message } from '../../services/commercial';
 import { CatalogPicker } from '../products/CatalogPicker';
 import { costApi, techniques } from '../costs/costApi';
 import type { HistoryDetail, HistoryItem } from '../costs/costApi';
-import type { Detail, Discount, Draft, LineInput } from './quotationApi';
+import { customerApi, customerFields } from '../customers/customerApi';
+import type { Customer } from '../customers/customerApi';
+import type {
+  Detail,
+  Discount,
+  Draft,
+  LineInput,
+  Recipient,
+} from './quotationApi';
 
 type Row = {
   key: number;
@@ -37,13 +45,6 @@ const blank = (key: number): Row => ({
   unitPrice: '',
   discount: noDiscount,
 });
-const recipientFields = [
-  ['name', 'Nombre o razón social', 255],
-  ['contact', 'Contacto', 255],
-  ['email', 'Correo', 254],
-  ['phone', 'Teléfono', 64],
-  ['address', 'Dirección', 500],
-] as const;
 export function QuotationForm({
   token,
   initial,
@@ -62,6 +63,24 @@ export function QuotationForm({
   onClose: () => void;
 }) {
   const form = useRef<HTMLFormElement>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerError, setCustomerError] = useState('');
+  const [customerId, setCustomerId] = useState(initial?.customerId ?? null);
+  const [recipient, setRecipient] = useState<Partial<Recipient>>(
+    initial?.recipient ?? {},
+  );
+  useEffect(() => {
+    const active = new AbortController();
+    void customerApi.list(token, active.signal).then(
+      (items) => {
+        if (!active.signal.aborted) setCustomers(items);
+      },
+      (failure: unknown) => {
+        if (!active.signal.aborted) setCustomerError(message(failure));
+      },
+    );
+    return () => active.abort();
+  }, [token]);
   useEffect(() => {
     if (serverError) {
       form.current
@@ -106,6 +125,7 @@ export function QuotationForm({
     const data = new FormData(event.currentTarget);
     const get = (name: string) => String(data.get(name) ?? '').trim();
     onSave({
+      customerId,
       recipient: {
         name: get('name') || null,
         contact: get('contact') || null,
@@ -179,7 +199,36 @@ export function QuotationForm({
         )}
         <fieldset disabled={busy} className="formGrid commercialFields">
           <legend>Destinatario y condiciones</legend>
-          {recipientFields.map(([name, label, max]) => (
+          <Field label="Cliente registrado" error={customerError}>
+            {(accessibility) => (
+              <select
+                {...accessibility}
+                value={customerId ?? ''}
+                onChange={(event) => {
+                  const customer = customers.find(
+                    (item) => String(item.id) === event.target.value,
+                  );
+                  setCustomerId(customer?.id ?? null);
+                  if (customer) setRecipient(customer);
+                }}
+              >
+                <option value="">Sin vincular</option>
+                {customerId &&
+                  !customers.some((item) => item.id === customerId) && (
+                    <option value={customerId}>
+                      {initial?.recipient.name ?? 'Cliente vinculado'}
+                    </option>
+                  )}
+                {customers.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                    {item.phone ? ' · ' + item.phone : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+          {customerFields.map(([name, label, max]) => (
             <Field
               key={name}
               label={label}
@@ -191,7 +240,10 @@ export function QuotationForm({
                   type={name === 'email' ? 'email' : 'text'}
                   name={name}
                   maxLength={max}
-                  defaultValue={initial?.recipient[name] ?? ''}
+                  value={recipient[name] ?? ''}
+                  onChange={(event) =>
+                    setRecipient({ ...recipient, [name]: event.target.value })
+                  }
                 />
               )}
             </Field>

@@ -38,9 +38,9 @@ class QuotationPersistenceTest {
     @Autowired EntityManagerFactory entityManagerFactory;
 
     @Test
-    void startsFromAnEmptyDatabaseWithMigrationV9() {
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("9");
-        assertThat(flyway.info().applied()).hasSize(9);
+    void startsFromAnEmptyDatabaseWithMigrationV10() {
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("10");
+        assertThat(flyway.info().applied()).hasSize(10);
     }
 
     @Test
