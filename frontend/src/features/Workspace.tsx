@@ -3,6 +3,7 @@ import {
   ArrowLeftRight,
   Boxes,
   Calculator,
+  Wallet,
   FileText,
   LayoutDashboard,
   LogOut,
@@ -20,6 +21,7 @@ import { ProductsPage } from './products/ProductsPage';
 import { PurchasesPage } from './purchases/PurchasesPage';
 import { CostsPage } from './costs/CostsPage';
 import { CustomersPage } from './customers/CustomersPage';
+import { DailyCashPage } from './cash/DailyCashPage';
 import { QuotationsPage } from './quotations/QuotationsPage';
 import { request } from '../services/api';
 import type {
@@ -40,6 +42,7 @@ const navigation = [
   { id: 'costs', label: 'Costos de producción', icon: Calculator },
   { id: 'customers', label: 'Clientes', icon: Users },
   { id: 'quotations', label: 'Cotizaciones', icon: FileText },
+  { id: 'cash', label: 'Caja', icon: Wallet },
 ] as const;
 
 export function Workspace({
@@ -155,6 +158,7 @@ export function Workspace({
                   'costs',
                   'customers',
                   'quotations',
+                  'cash',
                 ].includes(item.id),
             )
             .map((item) => (
@@ -239,6 +243,9 @@ export function Workspace({
             )}
             {page === 'customers' && canManageCatalog && (
               <CustomersPage token={token} />
+            )}
+            {page === 'cash' && canManageCatalog && (
+              <DailyCashPage token={token} />
             )}
             {page === 'quotations' && canManageCatalog && (
               <QuotationsPage
