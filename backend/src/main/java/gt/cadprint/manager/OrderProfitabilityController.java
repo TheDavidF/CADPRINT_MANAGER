@@ -2,6 +2,7 @@ package gt.cadprint.manager;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 
 import org.hibernate.Hibernate;
 import org.springframework.http.HttpStatus;
@@ -17,13 +18,16 @@ class OrderProfitabilityController {
     private final QuotationRevisionRepo revisions;
     private final QuotationLineRepo lines;
     private final ProductionConsumptionRepository consumptions;
+    private final OrderDirectCostRepository costs;
 
     OrderProfitabilityController(CustomerOrderRepository orders, QuotationRevisionRepo revisions,
-                                 QuotationLineRepo lines, ProductionConsumptionRepository consumptions) {
+                                 QuotationLineRepo lines, ProductionConsumptionRepository consumptions,
+                                 OrderDirectCostRepository costs) {
         this.orders = orders;
         this.revisions = revisions;
         this.lines = lines;
         this.consumptions = consumptions;
+        this.costs = costs;
     }
 
     @GetMapping("/api/quotations/{quotationId}/revisions/{revisionNumber}/order/profitability")
@@ -63,11 +67,17 @@ class OrderProfitabilityController {
                         consumption.unitCostAtConsumption.multiply(consumption.movement.quantity));
             }
         }
+        var directCosts = costs.findAllByCustomerOrderIdOrderByIncurredOnDescIdDesc(order.id);
+        var directTotal = directCosts.stream().map(cost -> cost.amount).reduce(new BigDecimal("0.00"), BigDecimal::add);
         return new Estimate(sales, coveredCost, quotedLines.size(), missingLines, estimatedProfit, marginPercent,
-                recordedMaterialCost.setScale(2, RoundingMode.HALF_UP), recordedConsumptions.size(), unvaluedConsumptions);
+                recordedMaterialCost.setScale(2, RoundingMode.HALF_UP), recordedConsumptions.size(), unvaluedConsumptions,
+                directTotal, recordedMaterialCost.add(directTotal).setScale(2, RoundingMode.HALF_UP),
+                directCosts.stream().map(OrderDirectCostController.CostView::from).toList());
     }
 
     record Estimate(BigDecimal salesExcludingShipping, BigDecimal coveredEstimatedCost,
                     int lineCount, int missingCostLines, BigDecimal estimatedProfit, BigDecimal marginPercent,
-                    BigDecimal recordedMaterialCost, int consumptionCount, int unvaluedConsumptions) {}
+                    BigDecimal recordedMaterialCost, int consumptionCount, int unvaluedConsumptions,
+                    BigDecimal directCostTotal, BigDecimal recordedCostTotal,
+                    List<OrderDirectCostController.CostView> directCosts) {}
 }
