@@ -58,6 +58,26 @@ export function Workspace({
 }) {
   const [page, setPage] =
     useState<(typeof navigation)[number]['id']>('dashboard');
+  const [catalogDirty, setCatalogDirty] = useState(false);
+
+  useEffect(() => {
+    if (!catalogDirty) return;
+    function warnBeforeLeaving(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+    window.addEventListener('beforeunload', warnBeforeLeaving);
+    return () => window.removeEventListener('beforeunload', warnBeforeLeaving);
+  }, [catalogDirty]);
+
+  function leaveCatalog() {
+    return (
+      !catalogDirty ||
+      window.confirm(
+        'Tienes cambios sin guardar en el catálogo. ¿Salir y descartarlos?',
+      )
+    );
+  }
   const [data, setData] = useState({
     materials: [] as Material[],
     categories: [] as Category[],
@@ -173,7 +193,9 @@ export function Workspace({
               <button
                 key={item.id}
                 className={page === item.id ? 'selected' : ''}
-                onClick={() => setPage(item.id)}
+                onClick={() => {
+                  if (page !== item.id && leaveCatalog()) setPage(item.id);
+                }}
               >
                 <item.icon size={18} />
                 {item.label}
@@ -184,7 +206,11 @@ export function Workspace({
           <span>
             Sesión: <strong>{data.username}</strong>
           </span>
-          <button onClick={onLogout}>
+          <button
+            onClick={() => {
+              if (leaveCatalog()) onLogout();
+            }}
+          >
             <LogOut size={17} /> Cerrar sesión
           </button>
         </div>
@@ -252,7 +278,9 @@ export function Workspace({
             {page === 'customers' && canManageCatalog && (
               <CustomersPage token={token} />
             )}
-            {page === 'storefront' && admin && <CatalogEditor token={token} />}
+            {page === 'storefront' && admin && (
+              <CatalogEditor token={token} onDirtyChange={setCatalogDirty} />
+            )}
             {page === 'accounts' && admin && (
               <AccountsPage token={token} username={data.username} />
             )}

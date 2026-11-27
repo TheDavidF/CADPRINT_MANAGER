@@ -67,8 +67,20 @@ async function preparePhoto(file: File) {
   }
 }
 
-export function CatalogEditor({ token }: { token: string }) {
+export function CatalogEditor({
+  token,
+  onDirtyChange,
+}: {
+  token: string;
+  onDirtyChange: (dirty: boolean) => void;
+}) {
   const [catalog, setCatalog] = useState<Catalog>();
+  const [savedCatalog, setSavedCatalog] = useState<Catalog>();
+  const dirty = catalog !== savedCatalog;
+  useEffect(() => {
+    onDirtyChange(dirty);
+  }, [dirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
   const [version, setVersion] = useState(0);
   const [published, setPublished] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -85,7 +97,9 @@ export function CatalogEditor({ token }: { token: string }) {
         if (active.signal.aborted) return;
         setVersion(saved.version);
         setPublished(saved.published);
-        setCatalog(saved.draft ?? initialCatalog);
+        const draft = saved.draft ?? initialCatalog;
+        setCatalog(draft);
+        setSavedCatalog(draft);
       },
       (failure: unknown) => {
         if (!active.signal.aborted) setError(message(failure));
@@ -138,6 +152,7 @@ export function CatalogEditor({ token }: { token: string }) {
       );
       setVersion(saved.version);
       setPublished(saved.published);
+      setSavedCatalog(catalog);
       setNotice(publish ? 'Cambios publicados.' : 'Borrador guardado.');
     } catch (failure) {
       setError(message(failure));
@@ -218,6 +233,7 @@ export function CatalogEditor({ token }: { token: string }) {
       </PanelHeader>
       {error && <ErrorMessage>{error}</ErrorMessage>}
       {notice && <p role="status">{notice}</p>}
+      {dirty && <p role="status">Cambios sin guardar</p>}
       <div className="catalogEditorColumns">
         <fieldset className="catalogEditorControls" disabled={busy}>
           <legend>Apariencia y contacto</legend>
