@@ -124,13 +124,21 @@ def main():
         data={"requestId": "17fef011-8feb-47bc-befe-2177e47d9b84", "amount": 10, "method": "EFECTIVO"},
     )
     assert payment["paid"] == 10 and payment["balance"] == 15
+    (original_payment,) = payment["payments"]
+    assert original_payment["method"] == "EFECTIVO"
     api(rev + "/order/profitability", expected=403)
     assert api(rev + "/order/profitability", user="admin")["salesExcludingShipping"] == 25
 
     pdf_path = wait_for_pdf(rev)
     files = {path: checksum(path) for path in (image_path, pdf_path)}
     with open("compose-smoke-order.json", "w", encoding="utf-8") as saved:
-        json.dump({"path": rev, "orderId": order["id"], "files": files}, saved)
+        json.dump({
+            "path": rev,
+            "orderId": order["id"],
+            "paymentId": original_payment["id"],
+            "paymentMethod": original_payment["method"],
+            "files": files,
+        }, saved)
     print("PASS interfaz, roles, cliente, cotización, pedido, cobro y permisos")
 
 
@@ -141,6 +149,9 @@ def verify_restart():
     assert api(order["path"] + "/order")["id"] == order["orderId"]
     payment = api(order["path"] + "/order/payments")
     assert payment["paid"] == 10 and payment["balance"] == 15 and len(payment["payments"]) == 1
+    (restored_payment,) = payment["payments"]
+    assert restored_payment["id"] == order["paymentId"], "El ID del cobro cambió"
+    assert restored_payment["method"] == order["paymentMethod"], "El método del cobro cambió"
     individual = api("/me", user="operador.prueba")
     assert individual["username"] == "operador.prueba" and individual["roles"] == ["ROLE_OPERADOR"]
     for path, expected_hash in order["files"].items():
