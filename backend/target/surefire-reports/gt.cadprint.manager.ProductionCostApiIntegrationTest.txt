@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: gt.cadprint.manager.ProductionCostApiIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.300 s -- in gt.cadprint.manager.ProductionCostApiIntegrationTest

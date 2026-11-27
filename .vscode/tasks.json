@@ -1,0 +1,16 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "CADPRINT: validar rutas aisladas",
+            "type": "process",
+            "command": "powershell.exe",
+            "args": [
+                "-NoProfile",
+                "-Command",
+                "$ErrorActionPreference = 'Stop'; if ($env:TEMP -notmatch '^[A-Za-z]:[\\\\/]') { throw 'TEMP debe indicar una ruta local absoluta.' }; $root = [IO.Path]::GetFullPath((Join-Path $env:TEMP 'cadprint-sprint5-audit')); $workspace = (Get-Location).Path.TrimEnd('\\') + '\\'; if (($root + '\\').StartsWith($workspace, [StringComparison]::OrdinalIgnoreCase)) { throw 'La auditoría requiere un directorio fuera del proyecto.' }; $entries = @('db', 'db/cadprint.mv.db', 'documents', 'images') | ForEach-Object { Join-Path $root $_ }; for ($parent = $root; $parent; $parent = Split-Path -Parent $parent) { $entries += $parent }; foreach ($entry in $entries) { if (Test-Path -LiteralPath $entry) { $item = Get-Item -Force -LiteralPath $entry; if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $item.LinkType -eq 'HardLink') { throw 'La ruta de auditoría contiene un enlace.' } } }"
+            ],
+            "problemMatcher": []
+        }
+    ]
+}

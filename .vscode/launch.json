@@ -1,0 +1,66 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-CadprintApplication<cadprint-manager>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/backend",
+            "mainClass": "gt.cadprint.manager.CadprintApplication",
+            "projectName": "cadprint-manager",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "CADPRINT — Auditoría Sprint 5",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/backend",
+            "mainClass": "gt.cadprint.manager.CadprintApplication",
+            "projectName": "cadprint-manager",
+            "classPaths": ["$Runtime"],
+            "preLaunchTask": "CADPRINT: validar rutas aisladas",
+            "args": [
+                "--spring.config.location=classpath:/application.properties",
+                "--spring.profiles.active=sprint5-audit",
+                "--spring.datasource.url=jdbc:h2:file:${env:TEMP}/cadprint-sprint5-audit/db/cadprint;DB_CLOSE_ON_EXIT=FALSE",
+                "--spring.datasource.hikari.jdbc-url=jdbc:h2:file:${env:TEMP}/cadprint-sprint5-audit/db/cadprint;DB_CLOSE_ON_EXIT=FALSE",
+                "--spring.flyway.url=jdbc:h2:file:${env:TEMP}/cadprint-sprint5-audit/db/cadprint;DB_CLOSE_ON_EXIT=FALSE",
+                "--spring.datasource.username=sa",
+                "--spring.datasource.password=",
+                "--spring.flyway.user=sa",
+                "--spring.flyway.password=",
+                "--spring.flyway.enabled=true",
+                "--spring.flyway.locations=classpath:db/migration/h2,classpath:db/migration/common",
+                "--spring.jpa.hibernate.ddl-auto=validate",
+                "--cadprint.quotation-documents.directory=${env:TEMP}/cadprint-sprint5-audit/documents",
+                "--cadprint.product-images.directory=${env:TEMP}/cadprint-sprint5-audit/images",
+                "--server.address=127.0.0.1",
+                "--server.port=${input:cadprintAuditPort}"
+            ],
+            "env": {
+                "CADPRINT_ADMIN_PASSWORD": "${input:cadprintAuditAdmin}",
+                "CADPRINT_OPERATOR_PASSWORD": "${input:cadprintAuditOperator}"
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "cadprintAuditPort",
+            "type": "promptString",
+            "description": "Puerto local de auditoría (8080 para el proxy de Vite)",
+            "default": "8080"
+        },
+        {
+            "id": "cadprintAuditAdmin",
+            "type": "promptString",
+            "description": "Contraseña temporal de ADMIN",
+            "password": true
+        },
+        {
+            "id": "cadprintAuditOperator",
+            "type": "promptString",
+            "description": "Contraseña temporal de OPERADOR",
+            "password": true
+        }
+    ]
+}

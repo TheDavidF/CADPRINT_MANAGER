@@ -1,0 +1,142 @@
+ALTER TABLE product_variants ADD CONSTRAINT uq_product_variants_product_id_id UNIQUE (product_id, id);
+
+CREATE TABLE quotations (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    quotation_number VARCHAR(64),
+    created_by VARCHAR(255) NOT NULL,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    CONSTRAINT uq_quotation_number UNIQUE (quotation_number)
+);
+
+CREATE TABLE quotation_revisions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    quotation_id BIGINT NOT NULL,
+    revision_number INT NOT NULL,
+    source_revision_id BIGINT,
+    status VARCHAR(16) NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    recipient_name VARCHAR(255),
+    recipient_contact VARCHAR(255),
+    recipient_email VARCHAR(254),
+    recipient_phone VARCHAR(64),
+    recipient_address VARCHAR(500),
+    issuer_name VARCHAR(255),
+    issuer_email VARCHAR(254),
+    issuer_phone VARCHAR(64),
+    issuer_address VARCHAR(500),
+    issued_at DATETIME(6),
+    valid_until DATE,
+    commercial_terms VARCHAR(4000),
+    notes VARCHAR(4000),
+    general_discount_type VARCHAR(16) NOT NULL,
+    general_discount_value DECIMAL(27,2),
+    general_discount_percent DECIMAL(7,4),
+    general_discount_amount DECIMAL(27,2) NOT NULL,
+    shipping_amount DECIMAL(27,2) NOT NULL,
+    gross_amount DECIMAL(27,2) NOT NULL,
+    line_discount_total DECIMAL(27,2) NOT NULL,
+    subtotal DECIMAL(27,2) NOT NULL,
+    total_amount DECIMAL(27,2) NOT NULL,
+    calculation_policy_version VARCHAR(32) NOT NULL,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
+    replaced_by_revision_id BIGINT,
+    replaced_at DATETIME(6),
+    CONSTRAINT uq_qrev_number UNIQUE (quotation_id, revision_number),
+    CONSTRAINT uq_qrev_quotation_id UNIQUE (quotation_id, id),
+    CONSTRAINT fk_qrev_quotation FOREIGN KEY (quotation_id) REFERENCES quotations(id),
+    CONSTRAINT fk_qrev_source FOREIGN KEY (quotation_id, source_revision_id)
+        REFERENCES quotation_revisions(quotation_id, id),
+    CONSTRAINT fk_qrev_replacement FOREIGN KEY (quotation_id, replaced_by_revision_id)
+        REFERENCES quotation_revisions(quotation_id, id),
+    CONSTRAINT ck_qrev_number CHECK (revision_number > 0),
+    CONSTRAINT ck_qrev_currency CHECK (currency = 'GTQ'),
+    CONSTRAINT ck_qrev_status CHECK (status IN ('BORRADOR', 'EMITIDA', 'ACEPTADA', 'RECHAZADA', 'VENCIDA', 'CANCELADA')),
+    CONSTRAINT ck_qrev_replacement CHECK (
+        (replaced_by_revision_id IS NULL AND replaced_at IS NULL)
+        OR (replaced_by_revision_id IS NOT NULL AND replaced_at IS NOT NULL)
+    ),
+    CONSTRAINT ck_qrev_amounts CHECK (
+        shipping_amount >= 0 AND line_discount_total BETWEEN 0 AND gross_amount
+        AND subtotal = gross_amount - line_discount_total AND total_amount >= 0
+        AND total_amount = subtotal - general_discount_amount + shipping_amount
+    ),
+    CONSTRAINT ck_qrev_discount CHECK (
+        general_discount_amount BETWEEN 0 AND subtotal AND (
+            (general_discount_type = 'NONE' AND general_discount_value IS NULL AND general_discount_percent IS NULL AND general_discount_amount = 0)
+            OR (general_discount_type = 'FIXED' AND general_discount_value IS NOT NULL AND general_discount_percent IS NULL
+                AND general_discount_value = general_discount_amount)
+            OR (general_discount_type = 'PERCENTAGE' AND general_discount_value IS NULL AND general_discount_percent IS NOT NULL
+                AND general_discount_percent BETWEEN 0 AND 100)
+        )
+    )
+);
+
+CREATE TABLE quotation_lines (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    revision_id BIGINT NOT NULL,
+    position INT NOT NULL,
+    line_type VARCHAR(16) NOT NULL,
+    product_id BIGINT,
+    variant_id BIGINT,
+    production_calculation_id BIGINT,
+    sku_snapshot VARCHAR(255),
+    name_snapshot VARCHAR(255) NOT NULL,
+    description_snapshot VARCHAR(4000),
+    quantity INT NOT NULL,
+    unit_price DECIMAL(27,2) NOT NULL,
+    discount_type VARCHAR(16) NOT NULL,
+    discount_value DECIMAL(27,2),
+    discount_percent DECIMAL(7,4),
+    discount_amount DECIMAL(27,2) NOT NULL,
+    gross_amount DECIMAL(27,2) NOT NULL,
+    net_amount DECIMAL(27,2) NOT NULL,
+    CONSTRAINT uq_qline_position UNIQUE (revision_id, position),
+    CONSTRAINT fk_qline_revision FOREIGN KEY (revision_id) REFERENCES quotation_revisions(id),
+    CONSTRAINT fk_qline_product FOREIGN KEY (product_id) REFERENCES products(id),
+    CONSTRAINT fk_qline_variant FOREIGN KEY (product_id, variant_id) REFERENCES product_variants(product_id, id),
+    CONSTRAINT fk_qline_calculation FOREIGN KEY (production_calculation_id) REFERENCES production_calculations(id),
+    CONSTRAINT ck_qline_type CHECK (
+        (line_type = 'CATALOG' AND product_id IS NOT NULL)
+        OR (line_type = 'CUSTOM' AND product_id IS NULL AND variant_id IS NULL)
+    ),
+    CONSTRAINT ck_qline_quantity CHECK (quantity > 0 AND position > 0),
+    CONSTRAINT ck_qline_amounts CHECK (
+        unit_price >= 0 AND gross_amount = quantity * unit_price
+        AND net_amount = gross_amount - discount_amount AND net_amount >= 0
+    ),
+    CONSTRAINT ck_qline_discount CHECK (
+        discount_amount BETWEEN 0 AND gross_amount AND (
+            (discount_type = 'NONE' AND discount_value IS NULL AND discount_percent IS NULL AND discount_amount = 0)
+            OR (discount_type = 'FIXED' AND discount_value IS NOT NULL AND discount_percent IS NULL
+                AND discount_value = discount_amount)
+            OR (discount_type = 'PERCENTAGE' AND discount_value IS NULL AND discount_percent IS NOT NULL
+                AND discount_percent BETWEEN 0 AND 100)
+        )
+    )
+);
+
+CREATE TABLE quotation_events (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    revision_id BIGINT NOT NULL,
+    event_type VARCHAR(32) NOT NULL,
+    previous_status VARCHAR(16),
+    new_status VARCHAR(16),
+    actor VARCHAR(255) NOT NULL,
+    occurred_at DATETIME(6) NOT NULL,
+    reason VARCHAR(1000),
+    details VARCHAR(4000),
+    CONSTRAINT fk_qevent_revision FOREIGN KEY (revision_id) REFERENCES quotation_revisions(id),
+    CONSTRAINT ck_qevent_type CHECK (event_type IN (
+        'CREATED', 'UPDATED', 'ISSUED', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'CANCELLED', 'REVISED', 'REPLACED'
+    )),
+    CONSTRAINT ck_qevent_previous CHECK (previous_status IN ('BORRADOR', 'EMITIDA', 'ACEPTADA', 'RECHAZADA', 'VENCIDA', 'CANCELADA')),
+    CONSTRAINT ck_qevent_new CHECK (new_status IN ('BORRADOR', 'EMITIDA', 'ACEPTADA', 'RECHAZADA', 'VENCIDA', 'CANCELADA'))
+);
+
+CREATE INDEX idx_qrev_status_issued ON quotation_revisions(status, issued_at);
+CREATE INDEX idx_qrev_status_expiry ON quotation_revisions(status, valid_until);
+CREATE INDEX idx_qevent_revision_date ON quotation_events(revision_id, occurred_at, id);
+CREATE INDEX idx_qline_calculation ON quotation_lines(production_calculation_id);
