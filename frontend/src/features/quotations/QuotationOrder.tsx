@@ -1,3 +1,5 @@
+import { ProductionConsumptions } from './ProductionConsumptions';
+import type { Material } from '../../services/types';
 import { useEffect, useState } from 'react';
 import { Button, ErrorMessage, SummaryGrid } from '../../components/WorkflowUi';
 import { ApiError } from '../../services/api';
@@ -8,9 +10,13 @@ import type { CustomerOrder, Summary } from './quotationApi';
 export function QuotationOrder({
   token,
   current,
+  materials,
+  refreshInventory,
 }: {
   token: string;
   current: Summary;
+  materials: Material[];
+  refreshInventory: () => Promise<void>;
 }) {
   const [order, setOrder] = useState<CustomerOrder | null>();
   const [error, setError] = useState('');
@@ -142,6 +148,14 @@ export function QuotationOrder({
               </tbody>
             </table>
           </div>
+          {order.productionStartedAt && (
+            <ProductionConsumptions
+              token={token}
+              current={current}
+              materials={materials}
+              refreshInventory={refreshInventory}
+            />
+          )}
         </>
       )}
     </section>

@@ -98,6 +98,12 @@ class InventoryService {
         return postMovement(material, "ENTRADA", line.inventoryQuantity, reason, username, line);
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
+    Movement consumeForProduction(Long materialId, BigDecimal quantity, Long orderId, String username) {
+        return postMovement(findLockedMaterial(materialId), "SALIDA", quantity,
+                "Consumo de producción · pedido #" + orderId, username, null);
+    }
+
     private Movement postMovement(Material material, String type, BigDecimal quantity, String reason,
                                   String username, PurchaseLine purchaseLine) {
         if (!material.active) {
@@ -123,9 +129,7 @@ class InventoryService {
         movement.type = type;
         movement.quantity = quantity;
         movement.purchaseLine = purchaseLine;
-        if (purchaseLine != null) {
-            movement.createdAt = movement.createdAt.truncatedTo(ChronoUnit.MICROS);
-        }
+        movement.createdAt = movement.createdAt.truncatedTo(ChronoUnit.MICROS);
         movement.beforeStock = beforeStock;
         movement.afterStock = afterStock;
         movement.reason = reason;
