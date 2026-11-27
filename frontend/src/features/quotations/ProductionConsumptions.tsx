@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button, ErrorMessage, Field } from '../../components/WorkflowUi';
-import { request } from '../../services/api';
+import { ApiError, request } from '../../services/api';
 import { message } from '../../services/commercial';
 import type { Material } from '../../services/types';
 import type { Summary } from './quotationApi';
@@ -14,6 +14,21 @@ type Consumption = {
   afterStock: number;
   username: string;
 };
+
+type PendingConsumption = {
+  requestId: string;
+  materialId: number;
+  quantity: string;
+};
+
+function readPending(key: string): PendingConsumption | null {
+  try {
+    const saved = sessionStorage.getItem(key);
+    return saved ? (JSON.parse(saved) as PendingConsumption) : null;
+  } catch {
+    return null;
+  }
+}
 
 export function ProductionConsumptions({
   token,
@@ -38,8 +53,10 @@ export function ProductionConsumptions({
   const [reload, setReload] = useState(0);
   const [materialId, setMaterialId] = useState('');
   const [quantity, setQuantity] = useState('');
-  const pending = useRef<{ materialId: string; quantity: string; id: string }>(
-    null,
+  const storageKey = 'cadprint:pending-consumption:' + path;
+  const [pending, setPending] = useState(() => readPending(storageKey));
+  const pendingMaterial = materials.find(
+    (item) => item.id === pending?.materialId,
   );
   const material = materials.find(
     (item) => String(item.id) === materialId && item.active,
@@ -60,30 +77,40 @@ export function ProductionConsumptions({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || !material || !quantity) return;
-    if (
-      pending.current?.materialId !== materialId ||
-      pending.current.quantity !== quantity
-    ) {
-      pending.current = { materialId, quantity, id: crypto.randomUUID() };
+    if (busy || pending || !material || !quantity) return;
+
+    const input = {
+      requestId: crypto.randomUUID(),
+      materialId: material.id,
+      quantity,
+    };
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify(input));
+    } catch {
+      setError(
+        'El navegador no pudo guardar la solicitud para reintentar. El consumo no se envió.',
+      );
+      return;
     }
+    setPending(input);
+    await register(input);
+  }
+
+  async function register(input: PendingConsumption) {
     setError('');
     setBusy(true);
     try {
       const result = await request<Consumption>(token, path, {
         method: 'POST',
-        body: JSON.stringify({
-          requestId: pending.current.id,
-          materialId: material.id,
-          quantity,
-        }),
+        body: JSON.stringify(input),
       });
       setItems((previous) =>
         previous?.some((item) => item.id === result.id)
           ? previous
           : [...(previous ?? []), result],
       );
-      pending.current = null;
+      sessionStorage.removeItem(storageKey);
+      setPending(null);
       setQuantity('');
       try {
         await refreshInventory();
@@ -93,6 +120,13 @@ export function ProductionConsumptions({
         );
       }
     } catch (failure) {
+      if (
+        failure instanceof ApiError &&
+        [400, 404, 409, 422].includes(failure.status)
+      ) {
+        sessionStorage.removeItem(storageKey);
+        setPending(null);
+      }
       setError(message(failure));
     } finally {
       setBusy(false);
@@ -118,52 +152,74 @@ export function ProductionConsumptions({
         ))}
       {items && (
         <>
-          <form onSubmit={(event) => void submit(event)}>
-            <fieldset disabled={busy} className="formGrid commercialFields">
-              <legend>Registrar salida de inventario</legend>
-              <Field label="Material consumido">
-                {(accessibility) => (
-                  <select
-                    {...accessibility}
-                    required
-                    value={materialId}
-                    onChange={(event) => setMaterialId(event.target.value)}
-                  >
-                    <option value="">Selecciona un material</option>
-                    {materials
-                      .filter((item) => item.active)
-                      .map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.sku} · {item.name} ({item.unit})
-                        </option>
-                      ))}
-                  </select>
-                )}
-              </Field>
-              <Field
-                label={
-                  material
-                    ? 'Cantidad consumida (' + material.unit + ')'
-                    : 'Cantidad consumida'
-                }
+          {pending ? (
+            <div>
+              <p role="status">
+                Consumo pendiente de confirmación ·{' '}
+                {pendingMaterial?.name ?? 'Material #' + pending.materialId} ·{' '}
+                {pending.quantity}
+                {pendingMaterial ? ' ' + pendingMaterial.unit : ''}
+              </p>
+              <Button
+                tone="primary"
+                disabled={busy}
+                onClick={() => void register(pending)}
               >
-                {(accessibility) => (
-                  <input
-                    {...accessibility}
-                    type="number"
-                    step="0.001"
-                    min="0.001"
-                    required
-                    value={quantity}
-                    onChange={(event) => setQuantity(event.target.value)}
-                  />
-                )}
-              </Field>
-              <Button type="submit" tone="primary" disabled={!material || busy}>
-                {busy ? 'Registrando…' : 'Registrar consumo'}
+                {busy ? 'Confirmando…' : 'Reintentar consumo'}
               </Button>
-            </fieldset>
-          </form>
+            </div>
+          ) : (
+            <form onSubmit={(event) => void submit(event)}>
+              <fieldset disabled={busy} className="formGrid commercialFields">
+                <legend>Registrar salida de inventario</legend>
+                <Field label="Material consumido">
+                  {(accessibility) => (
+                    <select
+                      {...accessibility}
+                      required
+                      value={materialId}
+                      onChange={(event) => setMaterialId(event.target.value)}
+                    >
+                      <option value="">Selecciona un material</option>
+                      {materials
+                        .filter((item) => item.active)
+                        .map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.sku} · {item.name} ({item.unit})
+                          </option>
+                        ))}
+                    </select>
+                  )}
+                </Field>
+                <Field
+                  label={
+                    material
+                      ? 'Cantidad consumida (' + material.unit + ')'
+                      : 'Cantidad consumida'
+                  }
+                >
+                  {(accessibility) => (
+                    <input
+                      {...accessibility}
+                      type="number"
+                      step="0.001"
+                      min="0.001"
+                      required
+                      value={quantity}
+                      onChange={(event) => setQuantity(event.target.value)}
+                    />
+                  )}
+                </Field>
+                <Button
+                  type="submit"
+                  tone="primary"
+                  disabled={!material || busy}
+                >
+                  {busy ? 'Registrando…' : 'Registrar consumo'}
+                </Button>
+              </fieldset>
+            </form>
+          )}
           {items.length === 0 ? (
             <p>Sin consumos registrados.</p>
           ) : (
