@@ -21,6 +21,11 @@ export function QuotationDocument({
   useEffect(() => {
     const active = new AbortController();
     controller.current = active;
+    // Every revision has an independent document lifecycle.
+    setStatus(undefined);
+    setBusy(false);
+    setError('');
+    setUnavailable(false);
     return () => active.abort();
   }, [quotationId, revisionNumber, token]);
 
