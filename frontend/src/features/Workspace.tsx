@@ -1,3 +1,4 @@
+import { AccountsPage } from './AccountsPage';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ArrowLeftRight,
@@ -42,6 +43,7 @@ const navigation = [
   { id: 'costs', label: 'Costos de producción', icon: Calculator },
   { id: 'customers', label: 'Clientes', icon: Users },
   { id: 'quotations', label: 'Cotizaciones', icon: FileText },
+  { id: 'accounts', label: 'Cuentas', icon: Users },
   { id: 'cash', label: 'Caja', icon: Wallet },
 ] as const;
 
@@ -136,6 +138,7 @@ export function Workspace({
     }
   }
 
+  const admin = data.roles.includes('ROLE_ADMIN');
   const canManageCatalog = data.roles.some(
     (role) => role === 'ROLE_ADMIN' || role === 'ROLE_OPERADOR',
   );
@@ -149,6 +152,7 @@ export function Workspace({
         <div className="subbrand">Tus ideas toman forma</div>
         <nav aria-label="Secciones">
           {navigation
+            .filter((item) => item.id !== 'accounts' || admin)
             .filter(
               (item) =>
                 canManageCatalog ||
@@ -243,6 +247,9 @@ export function Workspace({
             )}
             {page === 'customers' && canManageCatalog && (
               <CustomersPage token={token} />
+            )}
+            {page === 'accounts' && admin && (
+              <AccountsPage token={token} username={data.username} />
             )}
             {page === 'cash' && canManageCatalog && (
               <DailyCashPage token={token} />

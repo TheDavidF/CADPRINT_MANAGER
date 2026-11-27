@@ -63,6 +63,27 @@ class QuotationApiIntegrationTest {
     @Autowired ProductVariantRepo variants;
 
     @Test
+    void createsIndividualAccountsAndAppliesTheirStatusAndPermissions() throws Exception {
+        var input = json.createObjectNode().put("username", "Turno.Norte")
+                .put("password", "clave-de-prueba-2026").put("role", "OPERADOR");
+        var operator = httpBasic("TURNO.NORTE", "clave-de-prueba-2026");
+        send(post("/api/accounts"), OPERATOR, input).andExpect(status().isForbidden());
+        send(post("/api/accounts"), ADMIN, input).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.username").value("turno.norte"))
+                .andExpect(jsonPath("$.passwordHash").doesNotExist());
+        send(post("/api/accounts"), ADMIN, input).andExpect(status().isConflict());
+        send(get("/api/me"), operator, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("turno.norte"))
+                .andExpect(jsonPath("$.roles[0]").value("ROLE_OPERADOR"));
+        send(get("/api/accounts"), operator, null).andExpect(status().isForbidden());
+        var state = json.createObjectNode().put("enabled", false);
+        send(put("/api/accounts/turno.norte/status"), ADMIN, state).andExpect(status().isOk());
+        send(get("/api/me"), operator, null).andExpect(status().isUnauthorized());
+        send(put("/api/accounts/turno.norte/status"), ADMIN, state.put("enabled", true)).andExpect(status().isOk());
+        send(get("/api/me"), operator, null).andExpect(status().isOk());
+    }
+
+    @Test
     void withholdsProfitEstimateWhenAnOrderHasNoLinkedCosts() throws Exception {
         var issued = emit(create("Cliente sin costo"), 1);
         var revision = path(issued, 1);

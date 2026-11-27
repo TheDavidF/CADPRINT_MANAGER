@@ -1,6 +1,7 @@
 package gt.cadprint.manager;
 
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -11,6 +12,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
@@ -27,15 +29,24 @@ public class SecurityConfig {
 
     @Bean
     UserDetailsService users(
-            PasswordEncoder encoder,
+            PasswordEncoder encoder, UserAccountRepository accounts,
             @Value("${CADPRINT_ADMIN_PASSWORD}") String adminPassword,
             @Value("${CADPRINT_OPERATOR_PASSWORD}") String operatorPassword) {
         if (adminPassword.isBlank() || operatorPassword.isBlank()) {
             throw new IllegalArgumentException("Configura las dos contraseñas de CADPRINT");
         }
-        return new InMemoryUserDetailsManager(
+        var bootstrap = new InMemoryUserDetailsManager(
                 User.withUsername("admin").password(encoder.encode(adminPassword)).roles("ADMIN").build(),
                 User.withUsername("operador").password(encoder.encode(operatorPassword)).roles("OPERADOR").build());
+        return username -> {
+            String name = username.toLowerCase(Locale.ROOT);
+            if (name.equals("admin") || name.equals("operador")) {
+                return bootstrap.loadUserByUsername(name);
+            }
+            var account = accounts.findById(name).orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+            return User.withUsername(account.username).password(account.passwordHash)
+                    .roles(account.role.name()).disabled(!account.enabled).build();
+        };
     }
 
     @Bean
@@ -45,6 +56,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsSource))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(rules -> rules
+                        .requestMatchers("/api/accounts", "/api/accounts/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/products/*/image").hasRole("ADMIN")
                         .requestMatchers("/api/products/*/image").hasAnyRole("ADMIN", "OPERADOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole("ADMIN")
