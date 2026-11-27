@@ -1,0 +1,192 @@
+.publicCatalog {
+  --catalog-accent: #126b60;
+  --catalog-on-accent: #fff;
+  min-height: 100vh;
+  background: #f4f5f0;
+  color: #172722;
+  font-family: 'Trebuchet MS', system-ui, sans-serif;
+}
+.publicCatalogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0;
+  padding: 1.25rem clamp(1.25rem, 6vw, 6rem);
+  border-bottom: 1px solid #d9dfd8;
+}
+.publicCatalogBrand {
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  font-size: 1.1rem;
+}
+.publicCatalogHeader a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: inherit;
+  font-weight: 700;
+}
+.publicCatalogMain {
+  max-width: 77rem;
+  margin: auto;
+  padding: 0 clamp(1.25rem, 6vw, 5rem) 4rem;
+}
+.publicCatalogIntro {
+  max-width: 46rem;
+  padding: clamp(2.6rem, 8vw, 6rem) 0 clamp(2rem, 5vw, 4rem);
+}
+.publicCatalogIntro h1 {
+  margin: 0;
+  font-size: clamp(2.3rem, 7.4vw, 6.4rem);
+  line-height: 0.95;
+  letter-spacing: -0.065em;
+  overflow-wrap: anywhere;
+}
+.publicCatalogIntro p {
+  margin: 1.25rem 0 0;
+  line-height: 1.6;
+  color: #44524c;
+  max-width: 34rem;
+}
+.publicCatalogGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 1.3rem;
+}
+.publicCatalogCard {
+  background: #fff;
+  border: 1px solid #d9dfd8;
+  border-radius: 1rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.publicCatalogPhoto {
+  aspect-ratio: 4 / 3;
+  background: #e0e9e2;
+  display: grid;
+  place-items: center;
+  color: #4d6458;
+  overflow: hidden;
+}
+.publicCatalogPhoto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.publicCatalogCardBody {
+  padding: 1.25rem;
+  display: grid;
+  gap: 0.65rem;
+  flex: 1;
+  align-content: start;
+}
+.publicCatalogCardBody h2 {
+  margin: 0;
+  font-size: 1.45rem;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+.publicCatalogCardBody p {
+  margin: 0;
+  color: #44524c;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.publicCatalogCardBody .publicCatalogCategory {
+  font-size: 0.77rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.catalogAction {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: var(--catalog-accent);
+  color: var(--catalog-on-accent);
+  border-radius: 0.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.publicCatalogEmpty {
+  display: grid;
+  place-content: center;
+  text-align: center;
+  padding: 1.25rem;
+}
+.catalogEditorActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+.catalogEditorActions a {
+  text-decoration: underline;
+}
+.catalogEditorColumns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+.catalogEditorControls,
+.catalogEditorCard {
+  display: grid;
+  gap: 0.85rem;
+  min-width: 0;
+}
+.catalogEditorCard {
+  border: 1px solid currentColor;
+  border-radius: 0.7rem;
+  padding: 0.8rem;
+}
+.catalogEditorCard textarea,
+.catalogEditorControls textarea {
+  width: 100%;
+}
+.catalogEditorCard summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.catalogEditorCardFields {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.8rem;
+}
+.catalogPreview {
+  border: 1px solid #cad8ce;
+  border-radius: 0.8rem;
+  overflow: hidden;
+  position: sticky;
+  top: 1rem;
+}
+.catalogPreview .publicCatalog {
+  min-height: 0;
+  max-height: 75vh;
+  overflow: auto;
+}
+.catalogPreview .publicCatalogIntro {
+  padding: 1.7rem 0;
+}
+.catalogPreview .publicCatalogIntro h1 {
+  font-size: clamp(1.75rem, 3vw, 3.1rem);
+}
+.catalogPreview .publicCatalogMain {
+  padding: 0 1rem 1rem;
+}
+.catalogPreview .publicCatalogHeader {
+  padding: 1rem;
+}
+@media (max-width: 950px) {
+  .catalogEditorColumns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .catalogPreview {
+    position: static;
+  }
+}

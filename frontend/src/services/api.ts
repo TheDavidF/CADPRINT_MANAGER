@@ -18,7 +18,7 @@ async function authenticatedResponse(
   options: RequestInit = {},
 ): Promise<Response> {
   const headers = new Headers(options.headers);
-  headers.set('Authorization', 'Basic ' + token);
+  if (token) headers.set('Authorization', 'Basic ' + token);
   if (typeof options.body === 'string' && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }

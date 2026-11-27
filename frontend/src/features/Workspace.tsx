@@ -1,3 +1,4 @@
+import { CatalogEditor } from './storefront/CatalogEditor';
 import { AccountsPage } from './AccountsPage';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -43,6 +44,7 @@ const navigation = [
   { id: 'costs', label: 'Costos de producción', icon: Calculator },
   { id: 'customers', label: 'Clientes', icon: Users },
   { id: 'quotations', label: 'Cotizaciones', icon: FileText },
+  { id: 'storefront', label: 'Catálogo público', icon: Package },
   { id: 'accounts', label: 'Cuentas', icon: Users },
   { id: 'cash', label: 'Caja', icon: Wallet },
 ] as const;
@@ -152,7 +154,9 @@ export function Workspace({
         <div className="subbrand">Tus ideas toman forma</div>
         <nav aria-label="Secciones">
           {navigation
-            .filter((item) => item.id !== 'accounts' || admin)
+            .filter(
+              (item) => !['accounts', 'storefront'].includes(item.id) || admin,
+            )
             .filter(
               (item) =>
                 canManageCatalog ||
@@ -248,6 +252,7 @@ export function Workspace({
             {page === 'customers' && canManageCatalog && (
               <CustomersPage token={token} />
             )}
+            {page === 'storefront' && admin && <CatalogEditor token={token} />}
             {page === 'accounts' && admin && (
               <AccountsPage token={token} username={data.username} />
             )}

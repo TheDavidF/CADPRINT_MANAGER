@@ -51,6 +51,7 @@ class MysqlMigrationTest {
 
         migrate(dataSource, "18");
         migrate(dataSource, "19");
+        migrate(dataSource, "20");
         var flyway = Flyway.configure().dataSource(dataSource)
                 .locations("classpath:db/migration/mysql", "classpath:db/migration/common").load();
         flyway.validate();

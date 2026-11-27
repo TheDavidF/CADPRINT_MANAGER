@@ -63,6 +63,43 @@ class QuotationApiIntegrationTest {
     @Autowired ProductVariantRepo variants;
 
     @Test
+    void publishesOnlyVisibleCardsAndKeepsDraftsPrivate() throws Exception {
+        api.perform(get("/api/storefront")).andExpect(status().isNotFound());
+        send(get("/api/storefront-admin"), OPERATOR, null).andExpect(status().isForbidden());
+        var initial = body(send(get("/api/storefront-admin"), ADMIN, null).andExpect(status().isOk()));
+        var update = json.createObjectNode().put("version", initial.path("version").asLong()).put("publish", false);
+        var catalog = update.putObject("catalog").put("brand", "CADPRINT").put("headline", "Catálogo de prueba")
+                .put("introduction", "").put("whatsapp", "50255555555").put("accent", "#126b60");
+        var cards = catalog.putArray("cards");
+        var visible = cards.addObject().put("title", "Llavero").put("category", "Regalos").put("description", "")
+                .put("visible", true).put("fixedPrice", true).put("price", "");
+        cards.addObject().put("title", "Tarjeta privada").put("category", "").put("description", "")
+                .put("visible", false).put("fixedPrice", false);
+        var draft = body(send(put("/api/storefront-admin"), ADMIN, update).andExpect(status().isOk()));
+        api.perform(get("/api/storefront")).andExpect(status().isNotFound());
+        update.put("version", draft.path("version").asLong()).put("publish", true);
+        send(put("/api/storefront-admin"), ADMIN, update).andExpect(status().isBadRequest());
+        visible.put("price", "25.00");
+        var published = body(send(put("/api/storefront-admin"), ADMIN, update).andExpect(status().isOk()));
+        api.perform(get("/api/storefront")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.cards.length()").value(1))
+                .andExpect(jsonPath("$.cards[0].title").value("Llavero"))
+                .andExpect(jsonPath("$.cards[0].price").value("25.00"));
+        send(put("/api/storefront-admin"), ADMIN, update).andExpect(status().isConflict());
+        update.put("version", published.path("version").asLong()).put("publish", false);
+        catalog.put("headline", "Solo borrador");
+        send(put("/api/storefront-admin"), ADMIN, update).andExpect(status().isOk());
+        api.perform(get("/api/storefront")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.headline").value("Catálogo de prueba"));
+        send(delete("/api/storefront-admin").param("version", String.valueOf(update.path("version").asLong() + 1)),
+                ADMIN, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.published").value(false))
+                .andExpect(jsonPath("$.draft.headline").value("Solo borrador"));
+        api.perform(get("/api/storefront")).andExpect(status().isNotFound());
+        api.perform(get("/api/products")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void createsIndividualAccountsAndAppliesTheirStatusAndPermissions() throws Exception {
         var input = json.createObjectNode().put("username", "Turno.Norte")
                 .put("password", "clave-de-prueba-2026").put("role", "OPERADOR");
