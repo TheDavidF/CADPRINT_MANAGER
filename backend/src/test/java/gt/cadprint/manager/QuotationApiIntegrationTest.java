@@ -171,6 +171,23 @@ class QuotationApiIntegrationTest {
                 .andExpect(jsonPath("$.consumptionCount").value(1))
                 .andExpect(jsonPath("$.unvaluedConsumptions").value(0));
 
+        var directPath = orderPath + "/direct-costs";
+        var direct = json.createObjectNode().put("requestId", java.util.UUID.randomUUID().toString())
+                .put("category", "ENVIO").put("description", "Envío de prueba")
+                .put("amount", "6.50").put("incurredOn", "2026-11-27");
+        send(post(directPath), OPERATOR, direct).andExpect(status().isForbidden());
+        Callable<JsonNode> record = () -> body(send(post(directPath), ADMIN, direct).andExpect(status().isOk()));
+        var directResults = race(record, record);
+        assertThat(directResults).containsExactly(directResults.getFirst(), directResults.getFirst());
+        send(post(directPath), ADMIN, direct.deepCopy().put("amount", "7.00")).andExpect(status().isConflict());
+        send(post(directPath), ADMIN, direct.deepCopy().put("category", "MATERIALES")).andExpect(status().isBadRequest());
+        send(get(profitability), ADMIN, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.recordedMaterialCost").value(2))
+                .andExpect(jsonPath("$.directCostTotal").value(6.5))
+                .andExpect(jsonPath("$.recordedCostTotal").value(8.5))
+                .andExpect(jsonPath("$.directCosts.length()").value(1))
+                .andExpect(jsonPath("$.directCosts[0].recordedBy").value("admin"));
+
         jdbc.update("UPDATE production_consumptions SET unit_cost_at_consumption = NULL WHERE id = ?",
                 results.getFirst().path("id").asLong());
         jdbc.update("UPDATE materials SET unit_cost = 0.00 WHERE id = ?", materialId);

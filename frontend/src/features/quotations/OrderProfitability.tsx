@@ -1,3 +1,5 @@
+import { OrderDirectCosts } from './OrderDirectCosts';
+import type { DirectCost } from './OrderDirectCosts';
 import { useEffect, useState } from 'react';
 import { Button, ErrorMessage, SummaryGrid } from '../../components/WorkflowUi';
 import { exactRequest, gtq, message } from '../../services/commercial';
@@ -13,6 +15,9 @@ type Estimate = {
   recordedMaterialCost: string;
   consumptionCount: number;
   unvaluedConsumptions: number;
+  directCostTotal: string;
+  recordedCostTotal: string;
+  directCosts: DirectCost[];
 };
 
 const decimals = [
@@ -21,6 +26,9 @@ const decimals = [
   'estimatedProfit',
   'marginPercent',
   'recordedMaterialCost',
+  'directCostTotal',
+  'recordedCostTotal',
+  'amount',
 ];
 
 export function OrderProfitability({
@@ -30,12 +38,13 @@ export function OrderProfitability({
   token: string;
   current: Summary;
 }) {
-  const path =
+  const orderPath =
     '/quotations/' +
     current.quotationId +
     '/revisions/' +
     current.revisionNumber +
-    '/order/profitability';
+    '/order';
+  const path = orderPath + '/profitability';
   const [estimate, setEstimate] = useState<Estimate>();
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
@@ -136,6 +145,14 @@ export function OrderProfitability({
               </p>
             </>
           )}
+          <OrderDirectCosts
+            token={token}
+            path={orderPath + '/direct-costs'}
+            costs={estimate.directCosts}
+            directTotal={estimate.directCostTotal}
+            recordedTotal={estimate.recordedCostTotal}
+            refresh={() => setReload((previous) => previous + 1)}
+          />
         </>
       )}
     </section>
