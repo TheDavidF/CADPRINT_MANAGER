@@ -1,3 +1,4 @@
+import type { Material } from '../../services/types';
 import { useEffect, useState } from 'react';
 import {
   Button,
@@ -51,9 +52,13 @@ const emptyFilters = { number: '', recipient: '', status: '' };
 export function QuotationsPage({
   token,
   admin,
+  materials,
+  refreshInventory,
 }: {
   token: string;
   admin: boolean;
+  materials: Material[];
+  refreshInventory: () => Promise<void>;
 }) {
   const [filters, setFilters] = useState(emptyFilters);
   const [page, setPage] = useState(0);
@@ -538,6 +543,8 @@ export function QuotationsPage({
                 key={accepted.quotationId + ':' + accepted.revisionNumber}
                 token={token}
                 current={accepted}
+                materials={materials}
+                refreshInventory={refreshInventory}
               />
             )}
             {closed && (

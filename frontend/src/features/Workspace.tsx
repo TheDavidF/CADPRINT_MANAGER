@@ -242,6 +242,8 @@ export function Workspace({
             )}
             {page === 'quotations' && canManageCatalog && (
               <QuotationsPage
+                materials={data.materials}
+                refreshInventory={refresh}
                 token={token}
                 admin={data.roles.includes('ROLE_ADMIN')}
               />

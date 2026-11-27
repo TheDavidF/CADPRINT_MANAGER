@@ -49,6 +49,44 @@ class QuotationApiIntegrationTest {
     @Autowired ProductVariantRepo variants;
 
     @Test
+    void recordsProductionConsumptionOnceAndRejectsInsufficientStock() throws Exception {
+        var material = json.createObjectNode().put("sku", "PROD-USAGE-PLA").put("name", "PLA prueba")
+                .put("category", "Filamento").put("unit", "g");
+        long materialId = body(send(post("/api/materials"), OPERATOR, material)
+                .andExpect(status().isCreated())).path("id").asLong();
+        var entry = json.createObjectNode().put("materialId", materialId).put("type", "ENTRADA")
+                .put("quantity", 10).put("reason", "Stock de prueba");
+        send(post("/api/movements"), OPERATOR, entry).andExpect(status().isCreated());
+
+        var issued = emit(create("Cliente de consumo"), 1);
+        var orderPath = path(issued, 1) + "/order";
+        var consumptionPath = orderPath + "/production/consumptions";
+        send(post(path(issued, 1) + "/accept"), OPERATOR, null).andExpect(status().isOk());
+        send(post(orderPath), OPERATOR, null).andExpect(status().isOk());
+        var consumption = json.createObjectNode().put("requestId", java.util.UUID.randomUUID().toString())
+                .put("materialId", materialId).put("quantity", "2.500");
+        send(post(consumptionPath), OPERATOR, consumption).andExpect(status().isConflict());
+        send(post(orderPath + "/production/start"), OPERATOR, null).andExpect(status().isOk());
+
+        Callable<JsonNode> register = () -> body(send(post(consumptionPath), OPERATOR, consumption)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.afterStock").value(7.5)));
+        var results = race(register, register);
+        assertThat(results).containsExactly(results.getFirst(), results.getFirst());
+        var different = consumption.deepCopy().put("quantity", "1.000");
+        send(post(consumptionPath), OPERATOR, different).andExpect(status().isConflict());
+        var tooMuch = consumption.deepCopy().put("requestId", java.util.UUID.randomUUID().toString())
+                .put("quantity", "8.000");
+        send(post(consumptionPath), OPERATOR, tooMuch).andExpect(status().isConflict());
+        send(get(consumptionPath), OPERATOR, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].movementId").value(results.getFirst().path("movementId").asLong()));
+        assertThat(jdbc.queryForObject("SELECT stock FROM materials WHERE id = ?", java.math.BigDecimal.class,
+                materialId)).isEqualByComparingTo("7.500");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM movements WHERE material_id = ? AND type = 'SALIDA'",
+                Integer.class, materialId)).isEqualTo(1);
+    }
+
+    @Test
     void startsProductionOnceAndPreservesTheOriginalOperator() throws Exception {
         var issued = emit(create("Cliente de producción"), 1);
         var orderPath = path(issued, 1) + "/order";
