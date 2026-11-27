@@ -76,7 +76,7 @@ export function CatalogEditor({
 }) {
   const [catalog, setCatalog] = useState<Catalog>();
   const [savedCatalog, setSavedCatalog] = useState<Catalog>();
-  const dirty = catalog !== savedCatalog;
+  const dirty = JSON.stringify(catalog) !== JSON.stringify(savedCatalog);
   useEffect(() => {
     onDirtyChange(dirty);
   }, [dirty, onDirtyChange]);
