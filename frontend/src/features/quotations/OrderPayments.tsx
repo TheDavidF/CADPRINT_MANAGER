@@ -25,6 +25,7 @@ type PaymentSummary = {
   balance: string;
   payments: Payment[];
 };
+const decimalAmount = /^[0-9]{1,25}(?:\.[0-9]{1,2})?$/;
 const moneyFields = ['total', 'paid', 'balance', 'amount'];
 
 function pendingPayment(key: string): PaymentInput | null {
@@ -108,7 +109,21 @@ export function OrderPayments({
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || pending || !amount) return;
-    const input = { requestId: crypto.randomUUID(), amount, method };
+    const normalizedAmount = amount.trim().replace(',', '.');
+    if (
+      !decimalAmount.test(normalizedAmount) ||
+      !/[1-9]/.test(normalizedAmount)
+    ) {
+      setError(
+        'Ingresa un monto mayor que cero, con hasta dos decimales y sin exponentes.',
+      );
+      return;
+    }
+    const input = {
+      requestId: crypto.randomUUID(),
+      amount: normalizedAmount,
+      method,
+    };
     try {
       sessionStorage.setItem(key, JSON.stringify(input));
     } catch {
@@ -150,8 +165,11 @@ export function OrderPayments({
           {pending ? (
             <>
               <p role="status">
-                Cobro pendiente de confirmación · {gtq(pending.amount)} ·{' '}
-                {methods[pending.method]}
+                Cobro pendiente de confirmación ·{' '}
+                {decimalAmount.test(pending.amount)
+                  ? gtq(pending.amount)
+                  : 'Q ' + pending.amount}{' '}
+                · {methods[pending.method]}
               </p>
               <Button disabled={busy} onClick={() => void record(pending)}>
                 Reintentar cobro
@@ -166,9 +184,8 @@ export function OrderPayments({
                     {(attributes) => (
                       <input
                         {...attributes}
-                        type="number"
-                        min="0.01"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         required
                         value={amount}
                         onChange={(event) => setAmount(event.target.value)}
