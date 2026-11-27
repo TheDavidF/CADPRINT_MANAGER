@@ -1,0 +1,46 @@
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: cadprint_manager
+      MYSQL_USER: cadprint
+      MYSQL_PASSWORD: ${CADPRINT_DB_PASSWORD:?Define CADPRINT_DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${CADPRINT_MYSQL_ROOT_PASSWORD:?Define CADPRINT_MYSQL_ROOT_PASSWORD}
+      TZ: UTC
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_PASSWORD\" mysql --protocol=TCP -h 127.0.0.1 -u \"$$MYSQL_USER\" \"$$MYSQL_DATABASE\" -e 'SELECT 1' >/dev/null"]
+      interval: 5s
+      timeout: 4s
+      retries: 20
+  backend:
+    build: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      SERVER_ADDRESS: 0.0.0.0
+      DB_URL: jdbc:mysql://db:3306/cadprint_manager?connectionTimeZone=UTC
+      DB_USER: cadprint
+      DB_PASSWORD: ${CADPRINT_DB_PASSWORD:?Define CADPRINT_DB_PASSWORD}
+      CADPRINT_ADMIN_PASSWORD: ${CADPRINT_ADMIN_PASSWORD:?Define CADPRINT_ADMIN_PASSWORD}
+      CADPRINT_OPERATOR_PASSWORD: ${CADPRINT_OPERATOR_PASSWORD:?Define CADPRINT_OPERATOR_PASSWORD}
+      CADPRINT_PRODUCT_IMAGES_DIRECTORY: /data/images
+      CADPRINT_QUOTATION_DOCUMENTS_DIRECTORY: /data/documents
+      TZ: UTC
+    volumes:
+      - product-images:/data/images
+      - quotation-documents:/data/documents
+    depends_on:
+      db:
+        condition: service_healthy
+  web:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:${CADPRINT_WEB_PORT:-8088}:8080"
+    depends_on:
+      - backend
+
+volumes:
+  mysql-data:
+  product-images:
+  quotation-documents:
