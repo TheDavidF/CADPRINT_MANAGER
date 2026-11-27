@@ -188,6 +188,22 @@ class QuotationApiIntegrationTest {
                 .andExpect(jsonPath("$.directCosts.length()").value(1))
                 .andExpect(jsonPath("$.directCosts[0].recordedBy").value("admin"));
 
+        String confirmPath = profitability + "/confirm";
+        var confirmation = json.createObjectNode().put("consumptionCount", 1).put("directCostCount", 1);
+        send(post(confirmPath), OPERATOR, confirmation).andExpect(status().isForbidden());
+        send(post(confirmPath), ADMIN, confirmation.deepCopy().put("directCostCount", 0))
+                .andExpect(status().isConflict());
+        var confirmed = body(send(post(confirmPath), ADMIN, confirmation).andExpect(status().isOk())
+                .andExpect(jsonPath("$.realProfit").value(16.5))
+                .andExpect(jsonPath("$.realMarginPercent").value(66))
+                .andExpect(jsonPath("$.costsConfirmedBy").value("admin")));
+        assertThat(body(send(post(confirmPath), ADMIN, confirmation).andExpect(status().isOk()))).isEqualTo(confirmed);
+        send(post(directPath), ADMIN, direct).andExpect(status().isOk());
+        send(get(profitability), ADMIN, null).andExpect(jsonPath("$.realProfit").value(16.5));
+        var extraCost = direct.deepCopy().put("requestId", java.util.UUID.randomUUID().toString());
+        send(post(directPath), ADMIN, extraCost).andExpect(status().isOk());
+        send(get(profitability), ADMIN, null).andExpect(jsonPath("$.realProfit").doesNotExist());
+
         jdbc.update("UPDATE production_consumptions SET unit_cost_at_consumption = NULL WHERE id = ?",
                 results.getFirst().path("id").asLong());
         jdbc.update("UPDATE materials SET unit_cost = 0.00 WHERE id = ?", materialId);
@@ -197,6 +213,8 @@ class QuotationApiIntegrationTest {
                 .andExpect(jsonPath("$.recordedMaterialCost").value(0))
                 .andExpect(jsonPath("$.consumptionCount").value(2))
                 .andExpect(jsonPath("$.unvaluedConsumptions").value(2));
+        send(post(confirmPath), ADMIN, confirmation.put("consumptionCount", 2).put("directCostCount", 2))
+                .andExpect(status().isConflict());
     }
 
     @Test
@@ -448,6 +466,14 @@ class QuotationApiIntegrationTest {
                 .andExpect(jsonPath("$.missingCostLines").value(0))
                 .andExpect(jsonPath("$.estimatedProfit").value(-2))
                 .andExpect(jsonPath("$.marginPercent").value(-11.11));
+        var shipping = json.createObjectNode().put("requestId", java.util.UUID.randomUUID().toString())
+                .put("category", "ENVIO").put("description", "Envío pagado")
+                .put("amount", "3.00").put("incurredOn", "2026-11-27");
+        send(post(revision + "/order/direct-costs"), ADMIN, shipping).andExpect(status().isOk());
+        var confirmation = json.createObjectNode().put("consumptionCount", 0).put("directCostCount", 1);
+        send(post(revision + "/order/profitability/confirm"), ADMIN, confirmation).andExpect(status().isOk())
+                .andExpect(jsonPath("$.realProfit").value(20))
+                .andExpect(jsonPath("$.profitDifferenceExcludingShipping").value(20));
 
         assertThat(jdbc.queryForObject("SELECT expected_good_units FROM production_calculations WHERE id = 81001",
                 Integer.class)).isEqualTo(10);

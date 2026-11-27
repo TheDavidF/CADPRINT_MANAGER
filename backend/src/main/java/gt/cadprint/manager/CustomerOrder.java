@@ -34,6 +34,16 @@ class CustomerOrder {
     @Column(length = 255)
     String productionStartedBy;
 
+    Instant costsConfirmedAt;
+
+    @Column(length = 255)
+    String costsConfirmedBy;
+
+    void clearCostConfirmation() {
+        costsConfirmedAt = null;
+        costsConfirmedBy = null;
+    }
+
     protected CustomerOrder() {}
 
     CustomerOrder(Long quotationId, int revisionNumber, String createdBy) {

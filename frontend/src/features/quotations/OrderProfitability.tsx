@@ -2,7 +2,7 @@ import { OrderDirectCosts } from './OrderDirectCosts';
 import type { DirectCost } from './OrderDirectCosts';
 import { useEffect, useState } from 'react';
 import { Button, ErrorMessage, SummaryGrid } from '../../components/WorkflowUi';
-import { exactRequest, gtq, message } from '../../services/commercial';
+import { body, exactRequest, gtq, message } from '../../services/commercial';
 import type { Summary } from './quotationApi';
 
 type Estimate = {
@@ -18,6 +18,10 @@ type Estimate = {
   directCostTotal: string;
   recordedCostTotal: string;
   directCosts: DirectCost[];
+  costsConfirmedBy: string | null;
+  realProfit: string | null;
+  realMarginPercent: string | null;
+  profitDifferenceExcludingShipping: string | null;
 };
 
 const decimals = [
@@ -29,6 +33,9 @@ const decimals = [
   'directCostTotal',
   'recordedCostTotal',
   'amount',
+  'realProfit',
+  'realMarginPercent',
+  'profitDifferenceExcludingShipping',
 ];
 
 export function OrderProfitability({
@@ -48,6 +55,35 @@ export function OrderProfitability({
   const [estimate, setEstimate] = useState<Estimate>();
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
+  const [confirming, setConfirming] = useState(false);
+
+  function refresh() {
+    setEstimate(undefined);
+    setReload((previous) => previous + 1);
+  }
+
+  async function confirm() {
+    if (!estimate || confirming) return;
+    setError('');
+    setConfirming(true);
+    try {
+      await exactRequest<Estimate>(
+        token,
+        path + '/confirm',
+        decimals,
+        body({
+          consumptionCount: estimate.consumptionCount,
+          directCostCount: estimate.directCosts.length,
+        }),
+      );
+      refresh();
+    } catch (failure) {
+      setError(message(failure));
+      refresh();
+    } finally {
+      setConfirming(false);
+    }
+  }
 
   useEffect(() => {
     const active = new AbortController();
@@ -151,8 +187,55 @@ export function OrderProfitability({
             costs={estimate.directCosts}
             directTotal={estimate.directCostTotal}
             recordedTotal={estimate.recordedCostTotal}
-            refresh={() => setReload((previous) => previous + 1)}
+            refresh={refresh}
           />
+          <h4>Utilidad real del pedido</h4>
+          {estimate.realProfit === null ? (
+            <>
+              {estimate.unvaluedConsumptions > 0 ? (
+                <p>
+                  Hay consumos sin costo registrado. Completa su valoración
+                  antes de confirmar.
+                </p>
+              ) : (
+                <>
+                  <p>
+                    Confirma cuando hayas registrado todos los costos del
+                    pedido.
+                  </p>
+                  <Button disabled={confirming} onClick={() => void confirm()}>
+                    {confirming ? 'Confirmando…' : 'Confirmar costos completos'}
+                  </Button>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <SummaryGrid
+                items={[
+                  {
+                    label: 'Utilidad real, con envío',
+                    value: gtq(estimate.realProfit),
+                  },
+                  {
+                    label: 'Margen real',
+                    value:
+                      estimate.realMarginPercent === null
+                        ? '—'
+                        : estimate.realMarginPercent + ' %',
+                  },
+                  {
+                    label: 'Diferencia con la utilidad estimada, sin envío',
+                    value:
+                      estimate.profitDifferenceExcludingShipping === null
+                        ? 'Sin estimación completa'
+                        : gtq(estimate.profitDifferenceExcludingShipping),
+                  },
+                ]}
+              />
+              <p>Costos confirmados por {estimate.costsConfirmedBy}.</p>
+            </>
+          )}
         </>
       )}
     </section>

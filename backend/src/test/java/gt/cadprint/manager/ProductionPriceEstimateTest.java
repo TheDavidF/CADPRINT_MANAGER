@@ -133,7 +133,7 @@ class ProductionPriceEstimateTest {
             assertThat(migrated.queryForList("""
                     SELECT "version" FROM "flyway_schema_history"
                     WHERE "success" AND "version" IS NOT NULL ORDER BY "installed_rank"
-                    """, String.class)).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17");
+                    """, String.class)).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18");
             assertThat(migrated.queryForList("SELECT * FROM production_calculations")).isEqualTo(header);
             assertThat(migrated.queryForList("SELECT * FROM production_fdm_details")).isEqualTo(details);
             assertThat(migrated.queryForList("SELECT * FROM production_cost_lines")).isEqualTo(lines);
