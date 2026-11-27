@@ -20,6 +20,7 @@ import type {
 } from './quotationApi';
 import { QuotationForm } from './QuotationForm';
 import { CustomerQuotation, QuotationDetails } from './QuotationDetails';
+import { QuotationOrder } from './QuotationOrder';
 import { QuotationDocument } from './QuotationDocument';
 
 const actions: Record<Action, string> = {
@@ -531,6 +532,13 @@ export function QuotationsPage({
                 },
               ]}
             />
+            {current.status === 'ACEPTADA' && (
+              <QuotationOrder
+                key={current.quotationId + ':' + current.revisionNumber}
+                token={token}
+                current={current}
+              />
+            )}
             {closed && (
               <p>
                 Ciclo cerrado por aceptación. Los borradores se conservan en el

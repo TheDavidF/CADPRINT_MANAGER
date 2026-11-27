@@ -49,6 +49,31 @@ class QuotationApiIntegrationTest {
     @Autowired ProductVariantRepo variants;
 
     @Test
+    void createsOneOrderFromAnAcceptedRevisionEvenWithConcurrentRequests() throws Exception {
+        var draft = create("Cliente del pedido");
+        var issued = emit(draft, 1);
+        var orderPath = path(issued, 1) + "/order";
+        send(get(orderPath), OPERATOR, null).andExpect(status().isNotFound());
+        send(post(orderPath), OPERATOR, null).andExpect(status().isConflict());
+        send(post(path(issued, 1) + "/accept"), OPERATOR, null).andExpect(status().isOk());
+
+        Callable<JsonNode> createOrder = () -> body(send(post(orderPath), OPERATOR, null)
+                .andExpect(status().isOk()));
+        var results = race(createOrder, createOrder);
+        long orderId = results.getFirst().path("id").asLong();
+        assertThat(orderId).isPositive();
+        assertThat(results).allSatisfy(result -> assertThat(result.path("id").asLong()).isEqualTo(orderId));
+        send(get(orderPath), OPERATOR, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(orderId))
+                .andExpect(jsonPath("$.quotation.revisionNumber").value(1))
+                .andExpect(jsonPath("$.quotation.recipient.name").value("Cliente del pedido"))
+                .andExpect(jsonPath("$.quotation.lines[0].quantity").value(1))
+                .andExpect(jsonPath("$.quotation.totals.totalAmount").value(25));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM customer_orders WHERE quotation_id = ?",
+                Integer.class, id(issued))).isEqualTo(1);
+    }
+
+    @Test
     void linksRegisteredCustomersWithoutChangingIssuedRecipientSnapshots() throws Exception {
         var customerInput = json.createObjectNode().put("name", "Cliente original").put("phone", "55550000");
         var customer = body(send(post("/api/customers"), OPERATOR, customerInput)
