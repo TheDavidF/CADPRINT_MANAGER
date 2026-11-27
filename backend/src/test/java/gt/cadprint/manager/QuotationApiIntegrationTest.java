@@ -23,6 +23,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -40,6 +42,18 @@ class QuotationApiIntegrationTest {
     private static final RequestPostProcessor ADMIN = httpBasic("admin", "test-admin-password");
     private static final RequestPostProcessor OPERATOR = httpBasic("operador", "test-operator-password");
     private static final ZoneId GUATEMALA = ZoneId.of("America/Guatemala");
+
+    @DynamicPropertySource
+    static void testDatabase(DynamicPropertyRegistry properties) {
+        String mysqlUrl = System.getenv("CADPRINT_TEST_MYSQL_URL");
+        if (mysqlUrl == null || mysqlUrl.isBlank()) {
+            return;
+        }
+        properties.add("spring.datasource.url", () -> mysqlUrl);
+        properties.add("spring.datasource.driver-class-name", () -> "com.mysql.cj.jdbc.Driver");
+        properties.add("spring.datasource.username", () -> System.getenv("CADPRINT_TEST_MYSQL_USER"));
+        properties.add("spring.datasource.password", () -> System.getenv("CADPRINT_TEST_MYSQL_PASSWORD"));
+    }
 
     @Autowired MockMvc api;
     @Autowired ObjectMapper json;
