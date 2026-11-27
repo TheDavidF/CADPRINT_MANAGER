@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: gt.cadprint.manager.ProductCatalogPersistenceTest
--------------------------------------------------------------------------------
-Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.204 s -- in gt.cadprint.manager.ProductCatalogPersistenceTest

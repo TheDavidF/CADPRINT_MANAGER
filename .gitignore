@@ -1,0 +1,31 @@
+# Frontend dependencies and builds
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+frontend/*.tsbuildinfo
+
+# Backend generated artifacts
+backend/target/
+backend/*.log
+
+# Runtime state and backups: keep out of public git history
+backend/data/
+*.mv.db
+*.trace.db
+*.db-journal
+*.db.lock
+*.sqlite
+*.sqlite3
+
+# Credentials and local overrides
+.env
+.env.*
+!.env.example
+*.local.properties
+
+# Editor / OS temporary files
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
