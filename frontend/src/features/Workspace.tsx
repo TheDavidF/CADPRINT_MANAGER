@@ -9,6 +9,7 @@ import {
   ShoppingCart,
   Package,
   Truck,
+  Users,
 } from 'lucide-react';
 import { CategoriesPanel } from './CategoriesPanel';
 import { DashboardPage } from './DashboardPage';
@@ -18,6 +19,7 @@ import { SuppliersPage } from './SuppliersPage';
 import { ProductsPage } from './products/ProductsPage';
 import { PurchasesPage } from './purchases/PurchasesPage';
 import { CostsPage } from './costs/CostsPage';
+import { CustomersPage } from './customers/CustomersPage';
 import { QuotationsPage } from './quotations/QuotationsPage';
 import { request } from '../services/api';
 import type {
@@ -36,6 +38,7 @@ const navigation = [
   { id: 'purchases', label: 'Compras', icon: ShoppingCart },
   { id: 'products', label: 'Productos', icon: Package },
   { id: 'costs', label: 'Costos de producción', icon: Calculator },
+  { id: 'customers', label: 'Clientes', icon: Users },
   { id: 'quotations', label: 'Cotizaciones', icon: FileText },
 ] as const;
 
@@ -146,9 +149,13 @@ export function Workspace({
             .filter(
               (item) =>
                 canManageCatalog ||
-                !['purchases', 'products', 'costs', 'quotations'].includes(
-                  item.id,
-                ),
+                ![
+                  'purchases',
+                  'products',
+                  'costs',
+                  'customers',
+                  'quotations',
+                ].includes(item.id),
             )
             .map((item) => (
               <button
@@ -229,6 +236,9 @@ export function Workspace({
                 materials={data.materials}
                 admin={data.roles.includes('ROLE_ADMIN')}
               />
+            )}
+            {page === 'customers' && canManageCatalog && (
+              <CustomersPage token={token} />
             )}
             {page === 'quotations' && canManageCatalog && (
               <QuotationsPage

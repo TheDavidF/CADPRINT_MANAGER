@@ -42,6 +42,8 @@ public class QuotationRevision {
     @Column(nullable = false, length = 3)
     String currency = "GTQ";
 
+    Long customerId;
+
     @Column(length = 255)
     String recipientName;
 

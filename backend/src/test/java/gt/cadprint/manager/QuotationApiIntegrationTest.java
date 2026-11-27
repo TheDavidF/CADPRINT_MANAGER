@@ -49,6 +49,35 @@ class QuotationApiIntegrationTest {
     @Autowired ProductVariantRepo variants;
 
     @Test
+    void linksRegisteredCustomersWithoutChangingIssuedRecipientSnapshots() throws Exception {
+        var customerInput = json.createObjectNode().put("name", "Cliente original").put("phone", "55550000");
+        var customer = body(send(post("/api/customers"), OPERATOR, customerInput)
+                .andExpect(status().isCreated()));
+        long customerId = customer.path("id").asLong();
+        var linkedDraft = draft("Sin usar");
+        linkedDraft.remove("recipient");
+        linkedDraft.put("customerId", customerId);
+        var created = body(send(post(BASE), OPERATOR, linkedDraft).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.customerId").value(customerId))
+                .andExpect(jsonPath("$.recipient.name").value("Cliente original")));
+        var issued = emit(created, 1);
+
+        customerInput.put("name", "Cliente actualizado");
+        send(put("/api/customers/" + customerId), OPERATOR, customerInput)
+                .andExpect(status().isOk());
+        send(get("/api/customers"), OPERATOR, null)
+                .andExpect(status().isOk());
+        var copy = revise(issued, 1);
+        assertThat(copy.path("customerId").asLong()).isEqualTo(customerId);
+        send(get(path(created, 1)), OPERATOR, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.recipient.name").value("Cliente original"))
+                .andExpect(jsonPath("$.recipient.phone").value("55550000"));
+
+        linkedDraft.put("customerId", Long.MAX_VALUE);
+        send(post(BASE), OPERATOR, linkedDraft).andExpect(status().isBadRequest());
+    }
+
+    @Test
     void editsAndReordersMultipleLinesWithExactDiscountsAndCatalogSnapshot() throws Exception {
         Product product = product("Q-CATALOG");
         var variant = new ProductVariant(product, "Q-CATALOG-BLUE");

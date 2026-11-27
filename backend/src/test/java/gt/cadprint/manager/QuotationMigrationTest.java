@@ -67,7 +67,7 @@ class QuotationMigrationTest {
                 "--CADPRINT_ADMIN_PASSWORD=test-admin-password",
                 "--CADPRINT_OPERATOR_PASSWORD=test-operator-password")) {
             assertThat(context.getEnvironment().getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
-            assertThat(context.getBean(Flyway.class).info().current().getVersion().getVersion()).isEqualTo("9");
+            assertThat(context.getBean(Flyway.class).info().current().getVersion().getVersion()).isEqualTo("10");
             var upgraded = context.getBean(JdbcTemplate.class);
             assertThat(snapshot(upgraded)).isEqualTo(storedRows);
             for (String table : List.of("quotations", "quotation_revisions", "quotation_lines", "quotation_events")) {

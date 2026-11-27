@@ -76,6 +76,7 @@ export type Summary = {
   totalAmount: string;
 };
 export type Detail = {
+  customerId?: number | null;
   revision: Summary;
   sourceRevisionNumber: number | null;
   replacementRevisionNumber: number | null;
@@ -109,6 +110,7 @@ export type LineInput = {
   discount: Discount;
 };
 export type Draft = {
+  customerId?: number | null;
   recipient: Recipient;
   commercialTerms: string;
   notes: string;

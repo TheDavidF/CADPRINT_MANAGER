@@ -43,9 +43,14 @@ class QuotationDocumentMigrationTest {
                 "--cadprint.quotation-documents.directory=" + directory.resolve("pdfs"),
                 "--CADPRINT_ADMIN_PASSWORD=test-admin-password", "--CADPRINT_OPERATOR_PASSWORD=test-operator-password")) {
             assertThat(context.getEnvironment().getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
-            assertThat(context.getBean(Flyway.class).info().current().getVersion().getVersion()).isEqualTo("9");
+            assertThat(context.getBean(Flyway.class).info().current().getVersion().getVersion()).isEqualTo("10");
             var jdbc = context.getBean(JdbcTemplate.class);
-            assertThat(jdbc.queryForList("SELECT * FROM quotation_revisions")).isEqualTo(snapshot);
+            var migrated = jdbc.queryForList("SELECT * FROM quotation_revisions");
+            assertThat(migrated).allSatisfy(row -> {
+                assertThat(row).containsEntry("CUSTOMER_ID", null);
+                row.remove("CUSTOMER_ID");
+            });
+            assertThat(migrated).isEqualTo(snapshot);
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM quotation_documents", Integer.class)).isZero();
             assertThat(context.getBean(QuotationDocumentService.class).request(1, 1).status())
                     .isEqualTo(QuotationDocumentQueue.Status.PENDING);
