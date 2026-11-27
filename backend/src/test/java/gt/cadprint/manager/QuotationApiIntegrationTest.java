@@ -49,6 +49,23 @@ class QuotationApiIntegrationTest {
     @Autowired ProductVariantRepo variants;
 
     @Test
+    void withholdsProfitEstimateWhenAnOrderHasNoLinkedCosts() throws Exception {
+        var issued = emit(create("Cliente sin costo"), 1);
+        var revision = path(issued, 1);
+        var estimate = revision + "/order/profitability";
+        send(get(estimate), ADMIN, null).andExpect(status().isNotFound());
+        send(post(revision + "/accept"), OPERATOR, null).andExpect(status().isOk());
+        send(post(revision + "/order"), OPERATOR, null).andExpect(status().isOk());
+
+        send(get(estimate), OPERATOR, null).andExpect(status().isForbidden());
+        send(get(estimate), ADMIN, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.salesExcludingShipping").value(25))
+                .andExpect(jsonPath("$.missingCostLines").value(1))
+                .andExpect(jsonPath("$.estimatedProfit").doesNotExist())
+                .andExpect(jsonPath("$.marginPercent").doesNotExist());
+    }
+
+    @Test
     void reportsDailyCashByGuatemalaDateAndMethod() throws Exception {
         var issued = emit(create("Cliente de caja"), 1);
         var revision = path(issued, 1);
@@ -370,6 +387,8 @@ class QuotationApiIntegrationTest {
                 VALUES (81001, 'FDM', 'v1', 'operador', CURRENT_TIMESTAMP, ?, 'Producto', 'Q-COST', 'Pieza', 10, 'GTQ', 3600, 0, 0, 100, 10)
                 """, product.id);
         var draft = draft("Costos");
+        draft.put("shippingAmount", "5.00");
+        draft.putObject("generalDiscount").put("type", "FIXED").put("value", "1.00");
         var line = draft.putArray("lines").addObject().put("type", "CATALOG").put("productId", other.id)
                 .put("productionCalculationId", 81001).put("quantity", 2).put("unitPrice", 11)
                 .putObject("discount");
@@ -384,6 +403,16 @@ class QuotationApiIntegrationTest {
                 .andExpect(jsonPath("$.lines[0].netAmount").value(19)));
         assertThat(commercial.toString()).doesNotContain("productionCalculationId", "belowHistoricalCost",
                 "unitCost", "actor", "version", "notes", "margin");
+        var revision = path(issued, 1);
+        send(post(revision + "/accept"), OPERATOR, null).andExpect(status().isOk());
+        send(post(revision + "/order"), OPERATOR, null).andExpect(status().isOk());
+        send(get(revision + "/order/profitability"), ADMIN, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.salesExcludingShipping").value(18))
+                .andExpect(jsonPath("$.coveredEstimatedCost").value(20))
+                .andExpect(jsonPath("$.missingCostLines").value(0))
+                .andExpect(jsonPath("$.estimatedProfit").value(-2))
+                .andExpect(jsonPath("$.marginPercent").value(-11.11));
+
         assertThat(jdbc.queryForObject("SELECT expected_good_units FROM production_calculations WHERE id = 81001",
                 Integer.class)).isEqualTo(10);
     }
