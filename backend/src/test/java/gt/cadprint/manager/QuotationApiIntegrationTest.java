@@ -49,6 +49,36 @@ class QuotationApiIntegrationTest {
     @Autowired ProductVariantRepo variants;
 
     @Test
+    void reportsDailyCashByGuatemalaDateAndMethod() throws Exception {
+        var issued = emit(create("Cliente de caja"), 1);
+        var revision = path(issued, 1);
+        send(post(revision + "/accept"), OPERATOR, null).andExpect(status().isOk());
+        var order = body(send(post(revision + "/order"), OPERATOR, null).andExpect(status().isOk()));
+        long orderId = order.path("id").asLong();
+        String[] methods = {"EFECTIVO", "EFECTIVO", "TRANSFERENCIA", "TRANSFERENCIA"};
+        String[] dates = {"2026-06-01T05:59:59.999999Z", "2026-06-01T06:00:00Z",
+                "2026-06-02T05:59:59.999999Z", "2026-06-02T06:00:00Z"};
+        for (int i = 0; i < dates.length; i++) {
+            jdbc.update("""
+                    INSERT INTO order_payments (customer_order_id, request_id, amount, method, received_at, received_by)
+                    VALUES (?, ?, ?, ?, ?, 'operador')
+                    """, orderId, java.util.UUID.randomUUID().toString(), 1 + i, methods[i],
+                    java.time.OffsetDateTime.parse(dates[i]));
+        }
+        send(get("/api/cash/daily").param("date", "2026-06-01"), OPERATOR, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cash").value(2)).andExpect(jsonPath("$.transfers").value(3))
+                .andExpect(jsonPath("$.total").value(5)).andExpect(jsonPath("$.payments.length()").value(2))
+                .andExpect(jsonPath("$.payments[0].orderId").value(orderId))
+                .andExpect(jsonPath("$.payments[0].quotationNumber").value(issued.at("/revision/quotationNumber").asText()))
+                .andExpect(jsonPath("$.payments[1].method").value("TRANSFERENCIA"));
+        send(get("/api/cash/daily").param("date", "2026-06-03"), ADMIN, null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0))
+                .andExpect(jsonPath("$.payments.length()").value(0));
+        api.perform(get("/api/cash/daily").param("date", "2026-06-01")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void recordsOrderPaymentsWithoutDuplicatingOrExceedingTheBalance() throws Exception {
         var issued = emit(create("Cliente de cobros"), 1);
         var revision = path(issued, 1);
