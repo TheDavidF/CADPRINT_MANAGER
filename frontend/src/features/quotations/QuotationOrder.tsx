@@ -45,6 +45,18 @@ export function QuotationOrder({
     }
   }
 
+  async function startProduction() {
+    setBusy(true);
+    setError('');
+    try {
+      setOrder(await quotationApi.startProduction(token, current));
+    } catch (failure) {
+      setError(message(failure));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <section className="panel" aria-label="Pedido de esta cotización">
       <h3>{order ? 'Pedido #' + order.id : 'Pedido'}</h3>
@@ -88,6 +100,21 @@ export function QuotationOrder({
               },
             ]}
           />
+          {order.productionStartedAt ? (
+            <p role="status">
+              En producción desde{' '}
+              {new Intl.DateTimeFormat('es-GT', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+                timeZone: 'America/Guatemala',
+              }).format(new Date(order.productionStartedAt))}
+              {' · ' + order.productionStartedBy}
+            </p>
+          ) : (
+            <Button disabled={busy} onClick={() => void startProduction()}>
+              {busy ? 'Iniciando producción…' : 'Iniciar producción'}
+            </Button>
+          )}
           <div className="tableWrap">
             <table>
               <thead>

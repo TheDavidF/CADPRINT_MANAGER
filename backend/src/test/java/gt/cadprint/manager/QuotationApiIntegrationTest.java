@@ -49,6 +49,27 @@ class QuotationApiIntegrationTest {
     @Autowired ProductVariantRepo variants;
 
     @Test
+    void startsProductionOnceAndPreservesTheOriginalOperator() throws Exception {
+        var issued = emit(create("Cliente de producción"), 1);
+        var orderPath = path(issued, 1) + "/order";
+        var productionPath = orderPath + "/production/start";
+        send(post(productionPath), OPERATOR, null).andExpect(status().isNotFound());
+        send(post(path(issued, 1) + "/accept"), OPERATOR, null).andExpect(status().isOk());
+        send(post(orderPath), OPERATOR, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.productionStartedAt").doesNotExist());
+
+        Callable<JsonNode> start = () -> body(send(post(productionPath), OPERATOR, null)
+                .andExpect(status().isOk()));
+        var results = race(start, start);
+        var started = results.getFirst();
+        assertThat(results).containsExactly(started, started);
+        assertThat(started.path("productionStartedAt").asText()).isNotBlank();
+        assertThat(started.path("productionStartedBy").asText()).isEqualTo("operador");
+        assertThat(body(send(post(productionPath), ADMIN, null).andExpect(status().isOk()))).isEqualTo(started);
+        assertThat(body(send(get(orderPath), ADMIN, null).andExpect(status().isOk()))).isEqualTo(started);
+    }
+
+    @Test
     void createsOneOrderFromAnAcceptedRevisionEvenWithConcurrentRequests() throws Exception {
         var orderDraft = draft("Cliente del pedido");
         ((ObjectNode) orderDraft.path("lines").get(0)).put("description", "Taza personalizada");
