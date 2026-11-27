@@ -1,3 +1,4 @@
+import { OrderProfitability } from './OrderProfitability';
 import { OrderPayments } from './OrderPayments';
 import { ProductionConsumptions } from './ProductionConsumptions';
 import type { Material } from '../../services/types';
@@ -11,11 +12,13 @@ import type { CustomerOrder, Summary } from './quotationApi';
 export function QuotationOrder({
   token,
   current,
+  showProfitability,
   materials,
   refreshInventory,
 }: {
   token: string;
   current: Summary;
+  showProfitability: boolean;
   materials: Material[];
   refreshInventory: () => Promise<void>;
 }) {
@@ -150,6 +153,9 @@ export function QuotationOrder({
             </table>
           </div>
           <OrderPayments token={token} current={current} />
+          {showProfitability && (
+            <OrderProfitability token={token} current={current} />
+          )}
           {order.productionStartedAt && (
             <ProductionConsumptions
               token={token}

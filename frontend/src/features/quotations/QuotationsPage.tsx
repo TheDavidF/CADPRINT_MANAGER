@@ -543,6 +543,7 @@ export function QuotationsPage({
                 key={accepted.quotationId + ':' + accepted.revisionNumber}
                 token={token}
                 current={accepted}
+                showProfitability={admin && !customer}
                 materials={materials}
                 refreshInventory={refreshInventory}
               />
