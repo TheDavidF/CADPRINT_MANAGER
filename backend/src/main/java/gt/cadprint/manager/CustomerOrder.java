@@ -1,6 +1,7 @@
 package gt.cadprint.manager;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -33,7 +34,7 @@ class CustomerOrder {
     CustomerOrder(Long quotationId, int revisionNumber, String createdBy) {
         this.quotationId = quotationId;
         this.revisionNumber = revisionNumber;
-        this.createdAt = Instant.now();
+        this.createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
         this.createdBy = createdBy;
     }
 }

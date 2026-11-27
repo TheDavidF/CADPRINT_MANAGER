@@ -200,9 +200,10 @@ export function QuotationsPage({
 
   const current = record?.detail.revision;
   const latest = record?.revisions[0];
-  const closed = record?.revisions.some(
+  const accepted = record?.revisions.find(
     (revision) => revision.status === 'ACEPTADA',
   );
+  const closed = Boolean(accepted);
   const issued = record?.revisions.find(
     (revision) => revision.issuedAt && !revision.replacedAt,
   );
@@ -532,11 +533,11 @@ export function QuotationsPage({
                 },
               ]}
             />
-            {current.status === 'ACEPTADA' && (
+            {accepted && (
               <QuotationOrder
-                key={current.quotationId + ':' + current.revisionNumber}
+                key={accepted.quotationId + ':' + accepted.revisionNumber}
                 token={token}
-                current={current}
+                current={accepted}
               />
             )}
             {closed && (

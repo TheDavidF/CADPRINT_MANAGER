@@ -50,25 +50,35 @@ class QuotationApiIntegrationTest {
 
     @Test
     void createsOneOrderFromAnAcceptedRevisionEvenWithConcurrentRequests() throws Exception {
-        var draft = create("Cliente del pedido");
+        var orderDraft = draft("Cliente del pedido");
+        ((ObjectNode) orderDraft.path("lines").get(0)).put("description", "Taza personalizada");
+        var draft = body(send(post(BASE), OPERATOR, orderDraft).andExpect(status().isCreated()));
         var issued = emit(draft, 1);
         var orderPath = path(issued, 1) + "/order";
         send(get(orderPath), OPERATOR, null).andExpect(status().isNotFound());
         send(post(orderPath), OPERATOR, null).andExpect(status().isConflict());
+        revise(issued, 1);
         send(post(path(issued, 1) + "/accept"), OPERATOR, null).andExpect(status().isOk());
+        send(get(BASE + "/" + id(issued)), OPERATOR, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.revision.revisionNumber").value(2))
+                .andExpect(jsonPath("$.revision.status").value("BORRADOR"));
+        send(post(path(issued, 2) + "/order"), OPERATOR, null).andExpect(status().isConflict());
 
         Callable<JsonNode> createOrder = () -> body(send(post(orderPath), OPERATOR, null)
                 .andExpect(status().isOk()));
         var results = race(createOrder, createOrder);
         long orderId = results.getFirst().path("id").asLong();
         assertThat(orderId).isPositive();
-        assertThat(results).allSatisfy(result -> assertThat(result.path("id").asLong()).isEqualTo(orderId));
-        send(get(orderPath), OPERATOR, null).andExpect(status().isOk())
+        assertThat(results).containsExactly(results.getFirst(), results.getFirst());
+        assertThat(createOrder.call()).isEqualTo(results.getFirst());
+        var retrieved = body(send(get(orderPath), OPERATOR, null).andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(orderId))
                 .andExpect(jsonPath("$.quotation.revisionNumber").value(1))
                 .andExpect(jsonPath("$.quotation.recipient.name").value("Cliente del pedido"))
                 .andExpect(jsonPath("$.quotation.lines[0].quantity").value(1))
-                .andExpect(jsonPath("$.quotation.totals.totalAmount").value(25));
+                .andExpect(jsonPath("$.quotation.lines[0].description").value("Taza personalizada"))
+                .andExpect(jsonPath("$.quotation.totals.totalAmount").value(25)));
+        assertThat(retrieved).isEqualTo(results.getFirst());
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM customer_orders WHERE quotation_id = ?",
                 Integer.class, id(issued))).isEqualTo(1);
     }

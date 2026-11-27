@@ -101,7 +101,12 @@ export function QuotationOrder({
               <tbody>
                 {order.quotation.lines.map((line) => (
                   <tr key={line.position}>
-                    <td>{line.name}</td>
+                    <td>
+                      {line.name}
+                      {line.description && line.description !== line.name && (
+                        <div>{line.description}</div>
+                      )}
+                    </td>
                     <td>{line.quantity}</td>
                     <td>{gtq(line.unitPrice)}</td>
                     <td>{gtq(line.netAmount)}</td>
