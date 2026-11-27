@@ -40,7 +40,6 @@ jobs:
           --health-timeout=3s
           --health-retries=20
     env:
-      CADPRINT_TEST_MYSQL_URL: jdbc:mysql://127.0.0.1:${{ job.services.mysql.ports[3306] }}/cadprint_test?connectionTimeZone=UTC
       CADPRINT_TEST_MYSQL_USER: cadprint
       CADPRINT_TEST_MYSQL_PASSWORD: cadprint_ci
       TZ: UTC
@@ -56,3 +55,5 @@ jobs:
           cache: maven
           cache-dependency-path: backend/pom.xml
       - run: bash mvnw -B "-Dtest=${{ matrix.test }}" test
+        env:
+          CADPRINT_TEST_MYSQL_URL: jdbc:mysql://127.0.0.1:${{ job.services.mysql.ports[3306] }}/cadprint_test?connectionTimeZone=UTC
