@@ -52,6 +52,7 @@ class OrderDirectCostController {
             }
             return CostView.from(cost);
         }
+        order.clearCostConfirmation();
         return CostView.from(costs.save(new OrderDirectCost(order.id, requestId, input.category(), description,
                 input.amount().setScale(2), input.incurredOn(), principal.getName())));
     }

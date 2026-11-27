@@ -68,6 +68,7 @@ class ProductionConsumptionController {
         }
 
         var movement = inventory.consumeForProduction(input.materialId(), input.quantity(), order.id, principal.getName());
+        order.clearCostConfirmation();
         return ConsumptionView.from(consumptions.save(new ProductionConsumption(order.id, movement, requestId)));
     }
 
