@@ -29,6 +29,11 @@ class CustomerOrder {
     @Column(nullable = false, length = 255)
     String createdBy;
 
+    Instant productionStartedAt;
+
+    @Column(length = 255)
+    String productionStartedBy;
+
     protected CustomerOrder() {}
 
     CustomerOrder(Long quotationId, int revisionNumber, String createdBy) {

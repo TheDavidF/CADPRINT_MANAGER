@@ -22,6 +22,12 @@ class CustomerOrderController {
         return orders.detail(quotationId, revisionNumber);
     }
 
+    @PostMapping("/production/start")
+    CustomerOrderService.OrderView startProduction(@PathVariable Long quotationId, @PathVariable int revisionNumber,
+                                                   Principal principal) {
+        return orders.startProduction(quotationId, revisionNumber, principal.getName());
+    }
+
     @PostMapping
     CustomerOrderService.OrderView create(@PathVariable Long quotationId, @PathVariable int revisionNumber,
                                           Principal principal) {

@@ -69,6 +69,8 @@ export type CustomerOrder = {
   createdAt: string;
   createdBy: string;
   quotation: CommercialView;
+  productionStartedAt: string | null;
+  productionStartedBy: string | null;
 };
 export type Summary = {
   quotationId: number;
@@ -216,6 +218,13 @@ export const quotationApi = {
         signal,
         method: create ? 'POST' : 'GET',
       },
+    ),
+  startProduction: (token: string, current: Summary) =>
+    read<CustomerOrder>(
+      token,
+      revision(current.quotationId, current.revisionNumber) +
+        '/order/production/start',
+      { method: 'POST' },
     ),
   document: (
     token: string,

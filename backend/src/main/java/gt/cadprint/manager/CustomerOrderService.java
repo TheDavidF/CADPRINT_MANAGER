@@ -1,6 +1,7 @@
 package gt.cadprint.manager;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -47,11 +48,23 @@ class CustomerOrderService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido no encontrado"));
     }
 
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    OrderView startProduction(Long quotationId, int revisionNumber, String actor) {
+        var order = orders.findForUpdateByQuotationIdAndRevisionNumber(quotationId, revisionNumber)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido no encontrado"));
+        if (order.productionStartedAt == null) {
+            order.productionStartedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
+            order.productionStartedBy = actor;
+        }
+        return view(order);
+    }
+
     private OrderView view(CustomerOrder order) {
         return new OrderView(order.id, order.quotationId, order.createdAt, order.createdBy,
-                quotationService.commercial(order.quotationId, order.revisionNumber));
+                quotationService.commercial(order.quotationId, order.revisionNumber),
+                order.productionStartedAt, order.productionStartedBy);
     }
 
     record OrderView(Long id, Long quotationId, Instant createdAt, String createdBy,
-                     QuotationDtos.CommercialView quotation) {}
+                     QuotationDtos.CommercialView quotation, Instant productionStartedAt, String productionStartedBy) {}
 }
