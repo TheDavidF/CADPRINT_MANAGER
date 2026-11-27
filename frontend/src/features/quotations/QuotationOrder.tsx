@@ -1,3 +1,4 @@
+import { OrderPayments } from './OrderPayments';
 import { ProductionConsumptions } from './ProductionConsumptions';
 import type { Material } from '../../services/types';
 import { useEffect, useState } from 'react';
@@ -148,6 +149,7 @@ export function QuotationOrder({
               </tbody>
             </table>
           </div>
+          <OrderPayments token={token} current={current} />
           {order.productionStartedAt && (
             <ProductionConsumptions
               token={token}

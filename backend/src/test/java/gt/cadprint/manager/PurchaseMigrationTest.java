@@ -43,7 +43,7 @@ class PurchaseMigrationTest {
                 "--CADPRINT_ADMIN_PASSWORD=test-admin-password",
                 "--CADPRINT_OPERATOR_PASSWORD=test-operator-password")) {
             assertThat(context.getEnvironment().getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
-            assertThat(version(jdbc)).isEqualTo("13");
+            assertThat(version(jdbc)).isEqualTo("14");
             assertThat(context.getBean(SupplierRepo.class).findById(71L).orElseThrow().name)
                     .isEqualTo("Proveedor anterior");
             assertThat(context.getBean(MaterialRepo.class).findById(91L).orElseThrow().stock)

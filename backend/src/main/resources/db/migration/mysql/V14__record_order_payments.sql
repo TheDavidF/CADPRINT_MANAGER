@@ -1,0 +1,12 @@
+CREATE TABLE order_payments (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    customer_order_id BIGINT NOT NULL,
+    request_id VARCHAR(36) NOT NULL,
+    amount DECIMAL(27,2) NOT NULL,
+    method VARCHAR(16) NOT NULL,
+    received_at DATETIME(6) NOT NULL,
+    received_by VARCHAR(255) NOT NULL,
+    CONSTRAINT fk_order_payment_order FOREIGN KEY (customer_order_id) REFERENCES customer_orders(id),
+    CONSTRAINT uq_order_payment_request UNIQUE (customer_order_id, request_id),
+    CONSTRAINT ck_order_payment_amount CHECK (amount > 0)
+);
