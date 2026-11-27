@@ -63,6 +63,13 @@ export type CommercialView = {
   totals: Totals;
   lines: CommercialLine[];
 };
+export type CustomerOrder = {
+  id: number;
+  quotationId: number;
+  createdAt: string;
+  createdBy: string;
+  quotation: CommercialView;
+};
 export type Summary = {
   quotationId: number;
   quotationNumber: string | null;
@@ -195,6 +202,20 @@ export const quotationApi = {
       token,
       revision(current.quotationId, current.revisionNumber) + '/commercial',
       { signal },
+    ),
+  order: (
+    token: string,
+    current: Summary,
+    signal?: AbortSignal,
+    create = false,
+  ) =>
+    read<CustomerOrder>(
+      token,
+      revision(current.quotationId, current.revisionNumber) + '/order',
+      {
+        signal,
+        method: create ? 'POST' : 'GET',
+      },
     ),
   document: (
     token: string,

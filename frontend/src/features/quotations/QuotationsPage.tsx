@@ -20,6 +20,7 @@ import type {
 } from './quotationApi';
 import { QuotationForm } from './QuotationForm';
 import { CustomerQuotation, QuotationDetails } from './QuotationDetails';
+import { QuotationOrder } from './QuotationOrder';
 import { QuotationDocument } from './QuotationDocument';
 
 const actions: Record<Action, string> = {
@@ -199,9 +200,10 @@ export function QuotationsPage({
 
   const current = record?.detail.revision;
   const latest = record?.revisions[0];
-  const closed = record?.revisions.some(
+  const accepted = record?.revisions.find(
     (revision) => revision.status === 'ACEPTADA',
   );
+  const closed = Boolean(accepted);
   const issued = record?.revisions.find(
     (revision) => revision.issuedAt && !revision.replacedAt,
   );
@@ -531,6 +533,13 @@ export function QuotationsPage({
                 },
               ]}
             />
+            {accepted && (
+              <QuotationOrder
+                key={accepted.quotationId + ':' + accepted.revisionNumber}
+                token={token}
+                current={accepted}
+              />
+            )}
             {closed && (
               <p>
                 Ciclo cerrado por aceptación. Los borradores se conservan en el
