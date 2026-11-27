@@ -49,6 +49,36 @@ class QuotationApiIntegrationTest {
     @Autowired ProductVariantRepo variants;
 
     @Test
+    void recordsOrderPaymentsWithoutDuplicatingOrExceedingTheBalance() throws Exception {
+        var issued = emit(create("Cliente de cobros"), 1);
+        var revision = path(issued, 1);
+        var paymentPath = revision + "/order/payments";
+        send(post(revision + "/accept"), OPERATOR, null).andExpect(status().isOk());
+        send(post(revision + "/order"), OPERATOR, null).andExpect(status().isOk());
+        send(get(paymentPath), OPERATOR, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(25)).andExpect(jsonPath("$.balance").value(25));
+
+        var deposit = json.createObjectNode().put("requestId", java.util.UUID.randomUUID().toString())
+                .put("amount", "12.50").put("method", "EFECTIVO");
+        Callable<JsonNode> pay = () -> body(send(post(paymentPath), OPERATOR, deposit).andExpect(status().isOk())
+                .andExpect(jsonPath("$.paid").value(12.5)).andExpect(jsonPath("$.payments.length()").value(1)));
+        var duplicate = race(pay, pay);
+        assertThat(duplicate).containsExactly(duplicate.getFirst(), duplicate.getFirst());
+        send(post(paymentPath), OPERATOR, deposit.deepCopy().put("method", "TRANSFERENCIA"))
+                .andExpect(status().isConflict());
+
+        var first = deposit.deepCopy().put("requestId", java.util.UUID.randomUUID().toString()).put("method", "TRANSFERENCIA");
+        var second = first.deepCopy().put("requestId", java.util.UUID.randomUUID().toString());
+        var statuses = race(
+                () -> send(post(paymentPath), OPERATOR, first).andReturn().getResponse().getStatus(),
+                () -> send(post(paymentPath), OPERATOR, second).andReturn().getResponse().getStatus());
+        assertThat(statuses).containsExactlyInAnyOrder(200, 409);
+        send(get(paymentPath), OPERATOR, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.paid").value(25)).andExpect(jsonPath("$.balance").value(0))
+                .andExpect(jsonPath("$.payments.length()").value(2));
+    }
+
+    @Test
     void recordsProductionConsumptionOnceAndRejectsInsufficientStock() throws Exception {
         var material = json.createObjectNode().put("sku", "PROD-USAGE-PLA").put("name", "PLA prueba")
                 .put("category", "Filamento").put("unit", "g");
