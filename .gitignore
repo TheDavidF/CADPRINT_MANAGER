@@ -1,6 +1,7 @@
 # Frontend dependencies and builds
 frontend/node_modules/
 frontend/dist/
+frontend/dist-storefront/
 frontend/.vite/
 frontend/coverage/
 frontend/*.tsbuildinfo

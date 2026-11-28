@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
+      COMPOSE_PROFILES: storefront
       CADPRINT_DB_PASSWORD: test-db-password
       CADPRINT_MYSQL_ROOT_PASSWORD: test-root-password
       CADPRINT_ADMIN_PASSWORD: test-admin-password

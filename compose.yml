@@ -40,6 +40,16 @@ services:
     depends_on:
       - backend
 
+  storefront:
+    profiles: [storefront]
+    build:
+      context: ./frontend
+      target: storefront
+    ports:
+      - "127.0.0.1:${CADPRINT_STOREFRONT_PORT:-8089}:8080"
+    depends_on:
+      - backend
+
 volumes:
   mysql-data:
   product-images:

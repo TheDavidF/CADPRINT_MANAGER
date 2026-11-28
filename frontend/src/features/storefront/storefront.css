@@ -1,3 +1,12 @@
+.standaloneCatalog {
+  margin: 0;
+}
+.standaloneCatalog *,
+.standaloneCatalog *::before,
+.standaloneCatalog *::after {
+  box-sizing: border-box;
+}
+
 .publicCatalog {
   --catalog-accent: #126b60;
   --catalog-on-accent: #fff;

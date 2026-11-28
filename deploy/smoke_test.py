@@ -10,6 +10,7 @@ from urllib.request import Request, urlopen
 
 
 BASE = "http://127.0.0.1:" + os.getenv("CADPRINT_WEB_PORT", "8088")
+STOREFRONT = "http://127.0.0.1:" + os.getenv("CADPRINT_STOREFRONT_PORT", "8089")
 PASSWORDS = {
     "admin": os.environ["CADPRINT_ADMIN_PASSWORD"],
     "operador": os.environ["CADPRINT_OPERATOR_PASSWORD"],
@@ -88,6 +89,43 @@ def checksum(path):
     return hashlib.sha256(api(path, binary=True)).hexdigest()
 
 
+def check_storefront(expected_title):
+    with urlopen(STOREFRONT + "/", timeout=5) as page:
+        assert page.url.endswith("/catalogo")
+        html = page.read().decode()
+        assert "<title>Catálogo CADPRINT</title>" in html
+        assert "<title>CADPRINT Manager</title>" not in html
+    with urlopen(STOREFRONT + "/api/storefront", timeout=5) as result:
+        catalog = json.load(result)
+    assert catalog["headline"] == expected_title
+    assert [card["title"] for card in catalog["cards"]] == ["Llavero"]
+    for path, method, expected in (
+        ("/api/storefront-admin", "GET", 404),
+        ("/api/me", "GET", 404),
+        ("/api/quotations", "GET", 404),
+        ("/index.html", "GET", 404),
+        ("/api/storefront", "PUT", 405),
+    ):
+        try:
+            with urlopen(Request(STOREFRONT + path, method=method), timeout=5) as result:
+                raise AssertionError((path, method, result.status))
+        except HTTPError as error:
+            assert error.code == expected, (path, method, error.code)
+
+
+def publish_storefront():
+    editor = api("/storefront-admin", user="admin")
+    visible = {"title": "Llavero", "category": "", "description": "", "fixedPrice": True,
+               "price": "25.00", "visible": True, "image": ""}
+    catalog = {"brand": "CADPRINT", "headline": "Catálogo de prueba", "introduction": "",
+               "whatsapp": "50255555555", "accent": "#126b60",
+               "cards": [visible, {**visible, "title": "Borrador privado", "visible": False}]}
+    api("/storefront-admin", user="admin", method="PUT",
+        data={"version": editor["version"], "publish": True, "catalog": catalog})
+    check_storefront(catalog["headline"])
+    return catalog["headline"]
+
+
 def main():
     assert wait_for_app()["roles"] == ["ROLE_OPERADOR"]
     assert api("/me", user="admin")["roles"] == ["ROLE_ADMIN"]
@@ -129,6 +167,7 @@ def main():
     api(rev + "/order/profitability", expected=403)
     assert api(rev + "/order/profitability", user="admin")["salesExcludingShipping"] == 25
 
+    storefront_title = publish_storefront()
     pdf_path = wait_for_pdf(rev)
     files = {path: checksum(path) for path in (image_path, pdf_path)}
     with open("compose-smoke-order.json", "w", encoding="utf-8") as saved:
@@ -138,6 +177,7 @@ def main():
             "paymentId": original_payment["id"],
             "paymentMethod": original_payment["method"],
             "files": files,
+            "storefrontTitle": storefront_title,
         }, saved)
     print("PASS interfaz, roles, cliente, cotización, pedido, cobro y permisos")
 
@@ -156,7 +196,8 @@ def verify_restart():
     assert individual["username"] == "operador.prueba" and individual["roles"] == ["ROLE_OPERADOR"]
     for path, expected_hash in order["files"].items():
         assert checksum(path) == expected_hash, path
-    print("PASS pedido, cobro, cuenta individual, imagen y PDF persistieron tras recrear los contenedores")
+    check_storefront(order["storefrontTitle"])
+    print("PASS pedido, cobro, cuenta individual, imagen, PDF y catálogo tras recrear los contenedores")
 
 
 if __name__ == "__main__":
